@@ -1,0 +1,1 @@
+# niewielki-editor

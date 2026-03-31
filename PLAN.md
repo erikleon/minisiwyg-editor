@@ -1,30 +1,30 @@
-# mini-editor — Engineering Implementation Plan
+# minisiwyg-editor — Engineering Implementation Plan
 
 ## Context
 
 Building a sub-5kb gzipped, zero-dependency WYSIWYG editor with security as a first-class architectural concern. The sanitizer is built INTO the editor via a declarative policy engine, not bolted on as a dependency. Spiritual successor to Pell (~1.2kb, 12k GitHub stars, abandoned with known XSS vulnerabilities).
 
-Design doc: `~/.gstack/projects/mini-editor/erik-no-branch-design-20260328-144036.md`
+Design doc: `~/.gstack/projects/minisiwyg-editor/erik-no-branch-design-20260328-144036.md`
 
 ## Architecture
 
 ```
                     ┌─────────────────────────────────┐
-                    │        mini-editor/toolbar       │
+                    │        minisiwyg-editor/toolbar       │
                     │   (optional, ~0.8kb gzipped)     │
                     │  buttons, ARIA, keyboard nav,    │
                     │  link prompt via window.prompt()  │
                     └──────────────┬──────────────────┘
                                    │ calls editor.exec()
                     ┌──────────────▼──────────────────┐
-                    │        mini-editor (core)        │
+                    │        minisiwyg-editor (core)        │
                     │   (~1.5kb gzipped)               │
                     │  contentEditable, paste handler,  │
                     │  execCommand wrapper, events      │
                     └──────────┬───────────────────────┘
                                │ consumes
               ┌────────────────▼────────────────┐
-              │       mini-editor/policy         │
+              │       minisiwyg-editor/policy         │
               │   (~0.8kb gzipped)               │
               │  MutationObserver, re-entrancy   │
               │  guard, tag normalization,        │
@@ -32,7 +32,7 @@ Design doc: `~/.gstack/projects/mini-editor/erik-no-branch-design-20260328-14403
               └────────────────┬────────────────┘
                                │ uses
               ┌────────────────▼────────────────┐
-              │      mini-editor/sanitize        │
+              │      minisiwyg-editor/sanitize        │
               │   (~1.2kb gzipped)               │
               │  DOM tree walker, whitelist       │
               │  check, <template> parsing,       │
@@ -85,7 +85,7 @@ contentEditable fires input/paste event
 ## File Structure
 
 ```
-mini-editor/
+minisiwyg-editor/
 ├── src/
 │   ├── sanitize.ts       — DOM tree walker, whitelist engine
 │   ├── policy.ts         — SanitizePolicy interface, MutationObserver wrapper
@@ -129,7 +129,7 @@ Each day = one branch, one PR-ready commit, all tests passing.
 - `package.json` — name, version 0.1.0, exports map with subpath exports (`./sanitize`, `./policy`, `./toolbar`), scripts (build, test, size-check), `"type": "module"`, engines, repository, license. DevDependencies: `typescript`, `vitest`, `happy-dom`, `playwright` (for OWASP browser tests)
 - `tsconfig.json` — strict mode, ES2020 target, declaration files, sourceMap
 - `esbuild.config.ts` — esbuild configuration for 4 entry points (sanitize, policy, editor, toolbar), ESM + CJS output, TypeScript compilation. esbuild is a single Go binary with zero JS dependencies.
-- `.github/workflows/ci.yml` — Node 20, install, test (vitest), test:browser (playwright), build, size check (`gzip -c dist/mini-editor.esm.js | wc -c` must be < 5120 bytes)
+- `.github/workflows/ci.yml` — Node 20, install, test (vitest), test:browser (playwright), build, size check (`gzip -c dist/minisiwyg-editor.esm.js | wc -c` must be < 5120 bytes)
 - `src/index.ts` — placeholder export
 - `src/types.ts` — `SanitizePolicy` interface
 - `src/defaults.ts` — `DEFAULT_POLICY` object with the standard whitelist
@@ -140,7 +140,7 @@ Each day = one branch, one PR-ready commit, all tests passing.
 
 **Size check script in package.json:**
 ```json
-"size-check": "node -e \"const fs=require('fs');const {execSync}=require('child_process');const size=execSync('gzip -c dist/mini-editor.esm.js').length;console.log(size+' bytes gzipped');if(size>5120){process.exit(1)}\""
+"size-check": "node -e \"const fs=require('fs');const {execSync}=require('child_process');const size=execSync('gzip -c dist/minisiwyg-editor.esm.js').length;console.log(size+' bytes gzipped');if(size>5120){process.exit(1)}\""
 ```
 
 **Tests:** Build succeeds, size check script runs (passes trivially on placeholder), CI workflow is valid YAML.
@@ -435,12 +435,12 @@ Each day = one branch, one PR-ready commit, all tests passing.
 
 **Work:**
 - Review esbuild output, eliminate dead code
-- Ensure tree-shaking works: importing only `mini-editor/sanitize` does not pull in editor code
+- Ensure tree-shaking works: importing only `minisiwyg-editor/sanitize` does not pull in editor code
 - Measure each export independently:
-  - `mini-editor/sanitize` gzipped size
-  - `mini-editor/policy` gzipped size
-  - `mini-editor` (core) gzipped size
-  - `mini-editor/toolbar` gzipped size
+  - `minisiwyg-editor/sanitize` gzipped size
+  - `minisiwyg-editor/policy` gzipped size
+  - `minisiwyg-editor` (core) gzipped size
+  - `minisiwyg-editor/toolbar` gzipped size
   - Full bundle (all exports) gzipped size
 - CI size check: update to check each export independently
 - Create `demo/index.html`:

@@ -185,8 +185,8 @@ describe('sanitize', () => {
     it('handles malformed URL encoding gracefully', () => {
       const html = '<a href="%ZZinvalid%encoding">click</a>';
       const result = sanitize(html, DEFAULT_POLICY);
-      // Should not crash — malformed encoding falls through to protocol check
-      expect(result).toContain('click');
+      // Malformed encoding: no protocol detected, treated as relative URL, kept
+      expect(result).toBe('<a href="%ZZinvalid%encoding">click</a>');
     });
   });
 

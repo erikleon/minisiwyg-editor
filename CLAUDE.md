@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-mini-editor is a sub-5kb gzipped, zero-dependency WYSIWYG editor with security as a first-class architectural concern. Built on contentEditable with a declarative policy engine that enforces allowed HTML via MutationObserver.
+minisiwyg-editor is a sub-5kb gzipped, zero-dependency WYSIWYG editor with security as a first-class architectural concern. Built on contentEditable with a declarative policy engine that enforces allowed HTML via MutationObserver.
 
 ## Architecture
 
 Four independent exports, bottom-up dependency chain:
 
-1. `mini-editor/sanitize` — DOM tree walker, whitelist-based HTML sanitizer
-2. `mini-editor/policy` — MutationObserver wrapper, re-entrancy guard, tag normalization
-3. `mini-editor` — contentEditable core, paste handler, execCommand wrapper
-4. `mini-editor/toolbar` — optional UI with ARIA roles and keyboard navigation
+1. `minisiwyg-editor/sanitize` — DOM tree walker, whitelist-based HTML sanitizer
+2. `minisiwyg-editor/policy` — MutationObserver wrapper, re-entrancy guard, tag normalization
+3. `minisiwyg-editor` — contentEditable core, paste handler, execCommand wrapper
+4. `minisiwyg-editor/toolbar` — optional UI with ARIA roles and keyboard navigation
 
 Shared types in `src/types.ts`. Default policy in `src/defaults.ts`.
 

@@ -1,5 +1,5 @@
 {
-  "name": "mini-editor",
+  "name": "minisiwyg-editor",
   "version": "0.1.0",
   "description": "A sub-5kb, zero-dependency WYSIWYG editor with built-in XSS protection",
   "type": "module",
@@ -55,7 +55,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/erikleon/niewielki-editor"
+    "url": "https://github.com/erikleon/minisiwyg-editor"
   },
   "engines": {
     "node": ">=20"

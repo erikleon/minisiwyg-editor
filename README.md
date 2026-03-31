@@ -1,8 +1,8 @@
-# mini-editor
+# minisiwyg-editor
 
 A sub-5kb gzipped, zero-dependency WYSIWYG editor with built-in XSS protection.
 
-Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k stars, abandoned with known XSS vulnerabilities). mini-editor treats security as architecture, not an afterthought. The sanitizer is built into the editor via a declarative policy engine, not bolted on as a dependency.
+Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k stars, abandoned with known XSS vulnerabilities). minisiwyg-editor treats security as architecture, not an afterthought. The sanitizer is built into the editor via a declarative policy engine, not bolted on as a dependency.
 
 ## Features
 
@@ -17,11 +17,11 @@ Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k s
 ## Quick Start
 
 ```bash
-npm install mini-editor
+npm install minisiwyg-editor
 ```
 
 ```typescript
-import { sanitize, DEFAULT_POLICY } from 'mini-editor';
+import { sanitize, DEFAULT_POLICY } from 'minisiwyg-editor';
 
 const dirty = '<p onclick="alert(1)">Hello <script>steal(cookies)</script><strong>world</strong></p>';
 const clean = sanitize(dirty, DEFAULT_POLICY);
@@ -30,21 +30,21 @@ const clean = sanitize(dirty, DEFAULT_POLICY);
 
 ## Subpath Exports
 
-mini-editor ships four independent modules. Each can be imported separately, and unused modules are tree-shaken out of your bundle.
+minisiwyg-editor ships four independent modules. Each can be imported separately, and unused modules are tree-shaken out of your bundle.
 
 | Export | Size (gzip) | Description |
 |---|---|---|
-| `mini-editor/sanitize` | ~1.6kb | Standalone HTML sanitizer. No DOM dependencies beyond `<template>`. |
-| `mini-editor/policy` | ~0.3kb | MutationObserver-based runtime enforcement. Defense-in-depth. |
-| `mini-editor` | ~1.6kb | contentEditable core with paste handler and formatting commands. |
-| `mini-editor/toolbar` | ~0.1kb | Optional toolbar UI with ARIA roles and keyboard navigation. |
+| `minisiwyg-editor/sanitize` | ~1.6kb | Standalone HTML sanitizer. No DOM dependencies beyond `<template>`. |
+| `minisiwyg-editor/policy` | ~0.3kb | MutationObserver-based runtime enforcement. Defense-in-depth. |
+| `minisiwyg-editor` | ~1.6kb | contentEditable core with paste handler and formatting commands. |
+| `minisiwyg-editor/toolbar` | ~0.1kb | Optional toolbar UI with ARIA roles and keyboard navigation. |
 
 ```typescript
 // Use just the sanitizer
-import { sanitize, DEFAULT_POLICY } from 'mini-editor/sanitize';
+import { sanitize, DEFAULT_POLICY } from 'minisiwyg-editor/sanitize';
 
 // Use the full editor (coming soon)
-import { createEditor } from 'mini-editor';
+import { createEditor } from 'minisiwyg-editor';
 ```
 
 ## Sanitizer
@@ -114,8 +114,8 @@ The built-in default policy allows common formatting tags with sensible limits:
 ### Custom Policies
 
 ```typescript
-import { sanitize } from 'mini-editor/sanitize';
-import type { SanitizePolicy } from 'mini-editor/sanitize';
+import { sanitize } from 'minisiwyg-editor/sanitize';
+import type { SanitizePolicy } from 'minisiwyg-editor/sanitize';
 
 // Minimal: only bold and italic, no links
 const strict: SanitizePolicy = {
@@ -165,7 +165,7 @@ The sanitizer itself is tested against OWASP XSS cheat sheet vectors in both hap
 
 ## Browser Support
 
-mini-editor requires browsers that support `<template>`, `MutationObserver`, and `contentEditable`. This covers all modern browsers:
+minisiwyg-editor requires browsers that support `<template>`, `MutationObserver`, and `contentEditable`. This covers all modern browsers:
 
 - Chrome 26+
 - Firefox 22+

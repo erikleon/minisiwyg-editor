@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_POLICY } from '../src/index';
 
-describe('mini-editor', () => {
+describe('minisiwyg-editor', () => {
   it('exports DEFAULT_POLICY', () => {
     expect(DEFAULT_POLICY).toBeDefined();
     expect(DEFAULT_POLICY.strip).toBe(true);

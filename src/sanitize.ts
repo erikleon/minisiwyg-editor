@@ -23,18 +23,18 @@ function extractProtocol(value: string): string | null {
   // Match protocol at start: "http:", "javascript:", etc.
   // Handle HTML entity encoding and URL encoding by decoding first.
   let decoded = trimmed;
+  // Decode HTML entities: &#x6A; → j, &#106; → j, etc.
+  decoded = decoded.replace(/&#x([0-9a-f]+);?/gi, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
+  decoded = decoded.replace(/&#(\d+);?/g, (_, dec) =>
+    String.fromCharCode(parseInt(dec, 10)),
+  );
+  // Decode URL encoding: %6A → j
   try {
-    // Decode HTML entities: &#x6A; → j, &#106; → j, etc.
-    decoded = decoded.replace(/&#x([0-9a-f]+);?/gi, (_, hex) =>
-      String.fromCharCode(parseInt(hex, 16)),
-    );
-    decoded = decoded.replace(/&#(\d+);?/g, (_, dec) =>
-      String.fromCharCode(parseInt(dec, 10)),
-    );
-    // Decode URL encoding: %6A → j
     decoded = decodeURIComponent(decoded);
   } catch {
-    // If decoding fails, use the original
+    // If URL decoding fails, keep entity-decoded result
   }
   // Strip whitespace and control characters that browsers ignore
   decoded = decoded.replace(/[\s\x00-\x1f]+/g, '');

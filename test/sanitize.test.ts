@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { sanitize } from '../src/sanitize';
 import { DEFAULT_POLICY } from '../src/defaults';
 import type { SanitizePolicy } from '../src/types';
+import { XSS_VECTORS, DANGEROUS_PATTERNS } from './xss-vectors';
 
 /** Helper to create a custom policy. */
 function makePolicy(overrides: Partial<SanitizePolicy> = {}): SanitizePolicy {
@@ -282,6 +283,110 @@ describe('sanitize', () => {
       const policy = makePolicy({ strip: false });
       const html = '<p>before <span>unwrapped</span> after</p>';
       expect(sanitize(html, policy)).toBe('<p>before unwrapped after</p>');
+    });
+  });
+
+  describe('OWASP XSS vector suite', () => {
+    /**
+     * For each OWASP vector, sanitize with DEFAULT_POLICY and verify
+     * the output contains no dangerous patterns.
+     */
+    for (const vector of XSS_VECTORS) {
+      it(`blocks: ${vector.name}`, () => {
+        const result = sanitize(vector.payload, DEFAULT_POLICY);
+
+        // Check no dangerous patterns remain in the output
+        for (const pattern of DANGEROUS_PATTERNS) {
+          // data: pattern should only flag in URL attribute context, not text content
+          if (pattern.source.includes('data') && !result.includes('href=') && !result.includes('src=')) {
+            continue;
+          }
+          expect(result, `Pattern ${pattern} found in: ${result}`).not.toMatch(pattern);
+        }
+      });
+    }
+
+    it('blocks javascript: even when policy.protocols includes it', () => {
+      const policy = makePolicy({ protocols: ['https', 'javascript'] });
+      const result = sanitize('<a href="javascript:alert(1)">click</a>', policy);
+      expect(result).toBe('<a>click</a>');
+    });
+
+    it('blocks data: even when policy.protocols includes it', () => {
+      const policy = makePolicy({ protocols: ['https', 'data'] });
+      const result = sanitize('<a href="data:text/html,evil">click</a>', policy);
+      expect(result).toBe('<a>click</a>');
+    });
+
+    it('always strips event handler attributes regardless of policy', () => {
+      // Even if someone adds onclick to the allowed attributes list,
+      // the sanitizer should strip it
+      const policy: SanitizePolicy = {
+        tags: { p: ['onclick', 'onmouseover'] },
+        strip: true,
+        maxDepth: 10,
+        maxLength: 100_000,
+        protocols: ['https'],
+      };
+      const result = sanitize('<p onclick="alert(1)" onmouseover="alert(2)">text</p>', policy);
+      expect(result).toBe('<p>text</p>');
+    });
+
+    it('strips all event handlers from allowed tags', () => {
+      const events = [
+        'onclick', 'onerror', 'onload', 'onfocus', 'onblur',
+        'onmouseover', 'onmouseout', 'onkeydown', 'onkeyup',
+        'onsubmit', 'onchange', 'oninput', 'ontoggle',
+      ];
+      for (const event of events) {
+        const html = `<p ${event}="alert(1)">text</p>`;
+        const result = sanitize(html, DEFAULT_POLICY);
+        expect(result, `${event} was not stripped`).toBe('<p>text</p>');
+      }
+    });
+
+    describe('paste payload sanitization', () => {
+      it('cleans Word-style paste (strips classes, styles, spans)', () => {
+        const html = '<p class="MsoNormal" style="margin:0"><span style="font-family:Calibri">Hello <b>world</b></span></p>';
+        // DEFAULT_POLICY has strip:true, so span (not in whitelist) and its children are removed entirely
+        const result = sanitize(html, DEFAULT_POLICY);
+        expect(result).toBe('<p></p>');
+        expect(result).not.toContain('class=');
+        expect(result).not.toContain('style=');
+        expect(result).not.toContain('<span');
+      });
+
+      it('cleans Word-style paste in unwrap mode (keeps text)', () => {
+        const policy = makePolicy({ strip: false });
+        const html = '<p class="MsoNormal" style="margin:0"><span style="font-family:Calibri">Hello <b>world</b></span></p>';
+        const result = sanitize(html, policy);
+        // unwrap mode: span is removed but children promoted, b normalized to strong
+        expect(result).toBe('<p>Hello <strong>world</strong></p>');
+      });
+
+      it('cleans Google Docs paste (strips spans, ids, styles)', () => {
+        const html = '<span style="font-size:11pt" id="docs-internal-guid-abc">Hello <b>world</b></span>';
+        // DEFAULT_POLICY has strip:true, so span and its children are removed
+        const result = sanitize(html, DEFAULT_POLICY);
+        expect(result).not.toContain('<span');
+        expect(result).not.toContain('style=');
+        expect(result).toBe('');
+      });
+
+      it('cleans Google Docs paste in unwrap mode (keeps text)', () => {
+        const policy = makePolicy({ strip: false });
+        const html = '<span style="font-size:11pt" id="docs-internal-guid-abc">Hello <b>world</b></span>';
+        const result = sanitize(html, policy);
+        expect(result).not.toContain('<span');
+        expect(result).not.toContain('style=');
+        expect(result).toContain('<strong>world</strong>');
+      });
+
+      it('strips meta and link tags from paste', () => {
+        const html = '<meta charset="utf-8"><link rel="stylesheet" href="evil.css"><p>text</p>';
+        const result = sanitize(html, DEFAULT_POLICY);
+        expect(result).toBe('<p>text</p>');
+      });
     });
   });
 });

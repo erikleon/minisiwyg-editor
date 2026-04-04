@@ -69,12 +69,15 @@ function cursorToEnd(element: HTMLElement): void {
 describe('Editor Core', () => {
   let container: HTMLDivElement;
 
+  const originalExecCommand = document.execCommand;
+
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
   });
 
   afterEach(() => {
+    document.execCommand = originalExecCommand;
     document.body.removeChild(container);
   });
 

@@ -206,7 +206,7 @@ export function createEditor(
       if (!sel || sel.rangeCount === 0) return false;
 
       const node = sel.anchorNode;
-      if (!node) return false;
+      if (!node || !element.contains(node)) return false;
 
       switch (command) {
         case 'bold':

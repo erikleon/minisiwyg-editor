@@ -22,6 +22,7 @@ export interface EditorOptions {
 
 export interface Editor {
   exec(command: string, value?: string): void;
+  queryState(command: string): boolean;
   getHTML(): string;
   getText(): string;
   destroy(): void;

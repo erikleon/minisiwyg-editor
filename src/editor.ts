@@ -135,6 +135,15 @@ export function createEditor(
   element.addEventListener('paste', onPaste);
   element.addEventListener('input', onInput);
 
+  function hasAncestor(node: Node, tagName: string): boolean {
+    let current: Node | null = node;
+    while (current && current !== element) {
+      if (current.nodeType === 1 && (current as Element).tagName === tagName) return true;
+      current = current.parentNode;
+    }
+    return false;
+  }
+
   const editor: Editor = {
     exec(command: string, value?: string): void {
       if (!SUPPORTED_COMMANDS.has(command)) {
@@ -185,6 +194,41 @@ export function createEditor(
         case 'codeBlock':
           doc.execCommand('formatBlock', false, '<pre>');
           break;
+      }
+    },
+
+    queryState(command: string): boolean {
+      if (!SUPPORTED_COMMANDS.has(command)) {
+        throw new Error(`Unknown editor command: "${command}"`);
+      }
+
+      const sel = doc.getSelection();
+      if (!sel || sel.rangeCount === 0) return false;
+
+      const node = sel.anchorNode;
+      if (!node) return false;
+
+      switch (command) {
+        case 'bold':
+          return hasAncestor(node, 'STRONG') || hasAncestor(node, 'B');
+        case 'italic':
+          return hasAncestor(node, 'EM') || hasAncestor(node, 'I');
+        case 'heading':
+          return hasAncestor(node, 'H1') || hasAncestor(node, 'H2') || hasAncestor(node, 'H3');
+        case 'blockquote':
+          return hasAncestor(node, 'BLOCKQUOTE');
+        case 'unorderedList':
+          return hasAncestor(node, 'UL');
+        case 'orderedList':
+          return hasAncestor(node, 'OL');
+        case 'link':
+          return hasAncestor(node, 'A');
+        case 'unlink':
+          return false;
+        case 'codeBlock':
+          return hasAncestor(node, 'PRE');
+        default:
+          return false;
       }
     },
 

@@ -366,6 +366,196 @@ describe('Editor Core', () => {
     editor.destroy();
   });
 
+  it('queryState for bold returns false when inactive', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>plain text</p>';
+    cursorToEnd(container);
+    expect(editor.queryState('bold')).toBe(false);
+    editor.destroy();
+  });
+
+  it('queryState for bold returns true inside <strong>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><strong>bold text</strong></p>';
+    // Place cursor inside the strong element
+    const strong = container.querySelector('strong')!;
+    const range = document.createRange();
+    range.setStart(strong.firstChild!, 2);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    expect(editor.queryState('bold')).toBe(true);
+    editor.destroy();
+  });
+
+  it('queryState for italic returns true inside <em>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><em>italic text</em></p>';
+    const em = container.querySelector('em')!;
+    const range = document.createRange();
+    range.setStart(em.firstChild!, 2);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    expect(editor.queryState('italic')).toBe(true);
+    editor.destroy();
+  });
+
+  it('queryState for link returns true inside <a>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><a href="https://example.com">link</a></p>';
+    const anchor = container.querySelector('a')!;
+    const range = document.createRange();
+    range.setStart(anchor.firstChild!, 1);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    expect(editor.queryState('link')).toBe(true);
+    editor.destroy();
+  });
+
+  it('queryState for link returns false outside <a>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>no link here</p>';
+    cursorToEnd(container);
+    expect(editor.queryState('link')).toBe(false);
+    editor.destroy();
+  });
+
+  it('queryState for unlink always returns false', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><a href="https://example.com">link</a></p>';
+    cursorToEnd(container);
+    expect(editor.queryState('unlink')).toBe(false);
+    editor.destroy();
+  });
+
+  it('queryState with unknown command throws', () => {
+    const editor = createEditor(container);
+    expect(() => editor.queryState('nonexistent')).toThrow('Unknown editor command');
+    editor.destroy();
+  });
+
+  it('exec bold on selection calls execCommand', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>hello world</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('bold');
+    expect(document.execCommand).toHaveBeenCalledWith('bold', false);
+    editor.destroy();
+  });
+
+  it('exec italic on selection calls execCommand', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>hello world</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('italic');
+    expect(document.execCommand).toHaveBeenCalledWith('italic', false);
+    editor.destroy();
+  });
+
+  it('exec blockquote calls formatBlock', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>a quote</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('blockquote');
+    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<blockquote>');
+    editor.destroy();
+  });
+
+  it('exec unorderedList calls insertUnorderedList', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>item</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('unorderedList');
+    expect(document.execCommand).toHaveBeenCalledWith('insertUnorderedList', false);
+    editor.destroy();
+  });
+
+  it('exec orderedList calls insertOrderedList', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>item</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('orderedList');
+    expect(document.execCommand).toHaveBeenCalledWith('insertOrderedList', false);
+    editor.destroy();
+  });
+
+  it('exec heading with valid levels calls formatBlock', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>title</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('heading', '1');
+    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<h1>');
+    editor.exec('heading', '2');
+    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<h2>');
+    editor.exec('heading', '3');
+    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<h3>');
+    editor.destroy();
+  });
+
+  it('exec codeBlock calls formatBlock with pre', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>code</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('codeBlock');
+    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<pre>');
+    editor.destroy();
+  });
+
+  it('link command accepts valid https URL', () => {
+    const editor = createEditor(container);
+    const errors: unknown[] = [];
+    editor.on('error', (err) => errors.push(err));
+
+    container.innerHTML = '<p>text</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('link', 'https://example.com');
+
+    expect(errors.length).toBe(0);
+    expect(document.execCommand).toHaveBeenCalledWith('createLink', false, 'https://example.com');
+    editor.destroy();
+  });
+
+  it('link command accepts mailto URL', () => {
+    const editor = createEditor(container);
+    const errors: unknown[] = [];
+    editor.on('error', (err) => errors.push(err));
+
+    container.innerHTML = '<p>text</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('link', 'mailto:test@example.com');
+
+    expect(errors.length).toBe(0);
+    expect(document.execCommand).toHaveBeenCalledWith('createLink', false, 'mailto:test@example.com');
+    editor.destroy();
+  });
+
+  it('formatting on empty container does not crash', () => {
+    const editor = createEditor(container);
+    document.execCommand = vi.fn(() => true);
+    // No content, no selection — just verify no throw
+    editor.exec('bold');
+    editor.exec('italic');
+    editor.exec('blockquote');
+    editor.exec('unorderedList');
+    editor.exec('orderedList');
+    editor.exec('codeBlock');
+    editor.destroy();
+  });
+
   it('destroy removes paste and input listeners', async () => {
     const onChange = vi.fn();
     const editor = createEditor(container, { onChange });

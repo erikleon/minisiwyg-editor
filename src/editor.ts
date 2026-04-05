@@ -81,6 +81,12 @@ export function createEditor(
       if (pre) {
         const text = clipboard.getData('text/plain');
         if (!text) return;
+        if (policy.maxLength > 0) {
+          const currentLen = element.textContent?.length ?? 0;
+          if (currentLen + text.length > policy.maxLength) {
+            emit('overflow', policy.maxLength);
+          }
+        }
         const range = sel.getRangeAt(0);
         range.deleteContents();
         const textNode = doc.createTextNode(text);
@@ -289,7 +295,8 @@ export function createEditor(
             }
             const pre2 = doc.createElement('pre');
             const code = doc.createElement('code');
-            code.textContent = (block.textContent || '') + '\n';
+            const blockText = block.textContent || '';
+            code.textContent = blockText.endsWith('\n') ? blockText : blockText + '\n';
             pre2.appendChild(code);
             if (block.parentNode === element) {
               element.replaceChild(pre2, block);
@@ -302,6 +309,7 @@ export function createEditor(
             sel.removeAllRanges();
             sel.addRange(r);
           }
+          emit('change', element.innerHTML);
           break;
         }
       }

@@ -35,5 +35,7 @@ export interface ToolbarOptions {
 }
 
 export interface Toolbar {
+  /** The toolbar container element. Place this in the DOM. */
+  element: HTMLElement;
   destroy(): void;
 }

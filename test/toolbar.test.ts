@@ -16,12 +16,10 @@ function createMockEditor(): Editor {
 describe('createToolbar', () => {
   let editor: Editor;
   let toolbar: Toolbar;
-  let container: HTMLElement;
 
   beforeEach(() => {
     editor = createMockEditor();
     document.body.innerHTML = '<div id="editor" contenteditable="true"></div>';
-    container = document.getElementById('editor')!;
   });
 
   afterEach(() => {
@@ -194,5 +192,47 @@ describe('createToolbar', () => {
     first.focus();
     first.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     expect(last.tabIndex).toBe(0);
+  });
+
+  it('link button rejects javascript: URLs', () => {
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('javascript:alert(1)');
+    toolbar = createToolbar(editor);
+    const linkBtn = toolbar.element.querySelector('.minisiwyg-btn-link') as HTMLButtonElement;
+    linkBtn.click();
+    expect(editor.exec).not.toHaveBeenCalled();
+    promptSpy.mockRestore();
+  });
+
+  it('link button rejects data: URLs', () => {
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('data:text/html,<script>alert(1)</script>');
+    toolbar = createToolbar(editor);
+    const linkBtn = toolbar.element.querySelector('.minisiwyg-btn-link') as HTMLButtonElement;
+    linkBtn.click();
+    expect(editor.exec).not.toHaveBeenCalled();
+    promptSpy.mockRestore();
+  });
+
+  it('handles queryState throwing without crashing', () => {
+    (editor.queryState as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'heading') throw new Error('Unknown command');
+      return cmd === 'bold';
+    });
+    toolbar = createToolbar(editor, { actions: ['bold', 'heading', 'italic'] });
+    const boldBtn = toolbar.element.querySelector('.minisiwyg-btn-bold') as HTMLButtonElement;
+    boldBtn.click();
+    expect(boldBtn.getAttribute('aria-pressed')).toBe('true');
+    const headingBtn = toolbar.element.querySelector('.minisiwyg-btn-heading') as HTMLButtonElement;
+    expect(headingBtn.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('destroy removes selectionchange listener', () => {
+    toolbar = createToolbar(editor);
+    document.body.appendChild(toolbar.element);
+    const boldBtn = toolbar.element.querySelector('.minisiwyg-btn-bold') as HTMLButtonElement;
+    boldBtn.click();
+    const callCount = (editor.queryState as ReturnType<typeof vi.fn>).mock.calls.length;
+    toolbar.destroy();
+    document.dispatchEvent(new Event('selectionchange'));
+    expect((editor.queryState as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callCount);
   });
 });

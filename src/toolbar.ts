@@ -1,4 +1,6 @@
 import type { Editor, ToolbarOptions, Toolbar } from './types';
+import { isProtocolAllowed } from './shared';
+import { DEFAULT_POLICY } from './defaults';
 
 export type { ToolbarOptions, Toolbar } from './types';
 
@@ -50,9 +52,10 @@ export function createToolbar(
     const btn = doc.createElement('button');
     btn.type = 'button';
     btn.className = `minisiwyg-btn minisiwyg-btn-${action}`;
-    btn.setAttribute('aria-label', ACTION_LABELS[action] ?? action);
+    const label = ACTION_LABELS[action] ?? action;
+    btn.setAttribute('aria-label', label);
     btn.setAttribute('aria-pressed', 'false');
-    btn.textContent = ACTION_LABELS[action] ?? action;
+    btn.textContent = label;
 
     // Only first button is in tab order; rest use arrow keys
     btn.tabIndex = buttons.length === 0 ? 0 : -1;
@@ -63,16 +66,20 @@ export function createToolbar(
     buttons.push(btn);
   }
 
-  // If no custom element was provided, we need to add the container to the DOM
-  // The caller handles placement when using the default (no element option)
+  // Caller is responsible for placing toolbar.element in the DOM
 
   function onButtonClick(action: string): void {
-    if (action === 'link') {
-      const url = window.prompt('Enter URL');
-      if (!url) return;
-      editor.exec('link', url);
-    } else {
-      editor.exec(action);
+    try {
+      if (action === 'link') {
+        const url = window.prompt('Enter URL')?.trim();
+        if (!url) return;
+        if (!isProtocolAllowed(url, DEFAULT_POLICY.protocols)) return;
+        editor.exec('link', url);
+      } else {
+        editor.exec(action);
+      }
+    } catch {
+      // Unknown or invalid commands — don't crash the toolbar
     }
     updateActiveStates();
   }
@@ -120,9 +127,11 @@ export function createToolbar(
 
   container.addEventListener('keydown', onKeydown);
 
-  // Track selection changes to update active states
+  // Track selection changes to update active states (debounced to one per frame)
+  let rafId = 0;
   function onSelectionChange(): void {
-    updateActiveStates();
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(updateActiveStates);
   }
 
   doc.addEventListener('selectionchange', onSelectionChange);
@@ -131,6 +140,7 @@ export function createToolbar(
   const toolbar: Toolbar = {
     element: container,
     destroy(): void {
+      cancelAnimationFrame(rafId);
       container.removeEventListener('keydown', onKeydown);
       doc.removeEventListener('selectionchange', onSelectionChange);
       // Remove buttons

@@ -20,10 +20,11 @@ Shared types in `src/types.ts`. Default policy in `src/defaults.ts`.
 ## Build and Test
 
 ```bash
-npm run build          # esbuild: ESM + CJS output
+npm run build          # esbuild: ESM + CJS output (minified)
 npm test               # vitest with happy-dom
 npx playwright test    # OWASP XSS vectors in real browsers
-npm run size-check     # fails if total gzipped > 5kb
+npm run size-check     # fails if dist/index.js (full bundle) > 5kb gzipped
+npm run build:demo     # generates demo/index.html (gitignored, regenerate locally)
 ```
 
 Run a single test file:

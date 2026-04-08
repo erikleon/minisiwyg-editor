@@ -34,6 +34,7 @@
   ],
   "scripts": {
     "build": "rm -rf dist && node esbuild.config.js && tsc --emitDeclarationOnly",
+    "build:demo": "npm run build && node scripts/build-demo.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:browser": "npx playwright test",

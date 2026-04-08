@@ -12,6 +12,8 @@ const shared = {
   sourcemap: true,
   target: 'es2020',
   platform: 'browser',
+  minify: true,
+  legalComments: 'none',
 };
 
 // ESM output

@@ -58,6 +58,10 @@
     "type": "git",
     "url": "https://github.com/erikleon/minisiwyg-editor"
   },
+  "homepage": "https://erikleon.github.io/minisiwyg-editor/",
+  "bugs": {
+    "url": "https://github.com/erikleon/minisiwyg-editor/issues"
+  },
   "engines": {
     "node": ">=20"
   },

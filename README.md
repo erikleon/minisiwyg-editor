@@ -4,6 +4,12 @@ A sub-5kb gzipped, zero-dependency WYSIWYG editor with built-in XSS protection.
 
 Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k stars, abandoned with known XSS vulnerabilities). minisiwyg-editor treats security as architecture, not an afterthought. The sanitizer is built into the editor via a declarative policy engine, not bolted on as a dependency.
 
+## Live Demo
+
+Try it in your browser: **[erikleon.github.io/minisiwyg-editor](https://erikleon.github.io/minisiwyg-editor/)**
+
+The demo runs the full editor + toolbar in ~3.5kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
+
 ## Features
 
 - **Tiny.** ~3.5kb gzipped total. 5kb hard limit enforced in CI.

@@ -23,6 +23,8 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run size-check
+      - run: npx playwright install --with-deps
+      - run: npm run test:browser
       - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

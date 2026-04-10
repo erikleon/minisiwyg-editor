@@ -492,6 +492,92 @@ describe('Editor Core', () => {
     editor.destroy();
   });
 
+  it('toggling off a <ul> unwraps items into <p> without losing content', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<ul><li>one</li><li>two</li></ul>';
+    const li = container.querySelectorAll('li')[1]!;
+    const range = document.createRange();
+    range.selectNodeContents(li);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    const execSpy = vi.fn(() => true);
+    document.execCommand = execSpy;
+    editor.exec('unorderedList');
+
+    // execCommand must NOT be called — we handle the unwrap ourselves
+    expect(execSpy).not.toHaveBeenCalled();
+    expect(container.querySelector('ul')).toBeNull();
+    const ps = container.querySelectorAll('p');
+    expect(ps.length).toBe(2);
+    expect(ps[0].textContent).toBe('one');
+    expect(ps[1].textContent).toBe('two');
+    editor.destroy();
+  });
+
+  it('toggling off a <ul> preserves inline formatting', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<ul><li><strong>bold</strong> text</li></ul>';
+    const li = container.querySelector('li')!;
+    const range = document.createRange();
+    range.selectNodeContents(li);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    document.execCommand = vi.fn(() => true);
+    editor.exec('unorderedList');
+
+    expect(container.querySelector('ul')).toBeNull();
+    expect(container.querySelector('p strong')?.textContent).toBe('bold');
+    editor.destroy();
+  });
+
+  it('toggling off an <ol> unwraps items into <p>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<ol><li>first</li><li>second</li></ol>';
+    const li = container.querySelector('li')!;
+    const range = document.createRange();
+    range.selectNodeContents(li);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    const execSpy = vi.fn(() => true);
+    document.execCommand = execSpy;
+    editor.exec('orderedList');
+
+    expect(execSpy).not.toHaveBeenCalled();
+    expect(container.querySelector('ol')).toBeNull();
+    const ps = container.querySelectorAll('p');
+    expect(ps.length).toBe(2);
+    expect(ps[0].textContent).toBe('first');
+    editor.destroy();
+  });
+
+  it('orderedList exec inside a <ul> falls through to execCommand (different list type)', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<ul><li>item</li></ul>';
+    const li = container.querySelector('li')!;
+    const range = document.createRange();
+    range.selectNodeContents(li);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    const execSpy = vi.fn(() => true);
+    document.execCommand = execSpy;
+    editor.exec('orderedList');
+    // Different list type — must fall through to execCommand
+    expect(execSpy).toHaveBeenCalledWith('insertOrderedList', false);
+    editor.destroy();
+  });
+
   it('exec heading with valid levels calls formatBlock', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>title</p>';

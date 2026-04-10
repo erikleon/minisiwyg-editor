@@ -130,6 +130,41 @@ describe('createToolbar', () => {
     expect(boldBtn.classList.contains('minisiwyg-btn-active')).toBe(true);
   });
 
+  it('default actions render separators between groups', () => {
+    toolbar = createToolbar(editor);
+    const seps = toolbar.element.querySelectorAll('.minisiwyg-separator');
+    expect(seps.length).toBe(3);
+    seps.forEach((s) => {
+      expect(s.getAttribute('role')).toBe('separator');
+      expect(s.getAttribute('aria-orientation')).toBe('vertical');
+    });
+  });
+
+  it('separators do not interfere with arrow-key navigation', () => {
+    toolbar = createToolbar(editor);
+    document.body.appendChild(toolbar.element);
+    const buttons = toolbar.element.querySelectorAll('button');
+    const first = buttons[0] as HTMLButtonElement;
+    const second = buttons[1] as HTMLButtonElement;
+
+    first.focus();
+    first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(second.tabIndex).toBe(0);
+  });
+
+  it('buttons render an SVG icon for default actions', () => {
+    toolbar = createToolbar(editor);
+    const boldBtn = toolbar.element.querySelector('.minisiwyg-btn-bold') as HTMLButtonElement;
+    expect(boldBtn.querySelector('svg')).not.toBeNull();
+    expect(boldBtn.title).toBe('Bold');
+  });
+
+  it('custom actions accept "|" separator', () => {
+    toolbar = createToolbar(editor, { actions: ['bold', '|', 'italic'] });
+    expect(toolbar.element.querySelectorAll('button').length).toBe(2);
+    expect(toolbar.element.querySelectorAll('.minisiwyg-separator').length).toBe(1);
+  });
+
   it('custom actions list renders subset of buttons', () => {
     toolbar = createToolbar(editor, { actions: ['bold', 'italic'] });
     const buttons = toolbar.element.querySelectorAll('button');

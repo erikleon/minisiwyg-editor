@@ -60,6 +60,14 @@ export function createEditor(
     }
   }
 
+  // Notify both subscription paths (editor.on('change') and options.onChange)
+  // for programmatic edits that don't fire 'input' (codeBlock toggle, list unwrap).
+  function emitChange(): void {
+    const html = element.innerHTML;
+    emit('change', html);
+    options?.onChange?.(html);
+  }
+
   // Set up contentEditable
   element.contentEditable = 'true';
 
@@ -96,7 +104,7 @@ export function createEditor(
         sel.removeAllRanges();
         sel.addRange(range);
         emit('paste', element.innerHTML);
-        emit('change', element.innerHTML);
+        emitChange();
         return;
       }
     }
@@ -150,13 +158,12 @@ export function createEditor(
     }
 
     emit('paste', element.innerHTML);
-    emit('change', element.innerHTML);
+    emitChange();
   }
 
   // Input handler for change events
   function onInput(): void {
-    emit('change', element.innerHTML);
-    options?.onChange?.(element.innerHTML);
+    emitChange();
   }
 
   // Keydown handler for code block behavior
@@ -179,7 +186,7 @@ export function createEditor(
       range.collapse(true);
       sel.removeAllRanges();
       sel.addRange(range);
-      emit('change', element.innerHTML);
+      emitChange();
     }
 
     if (e.key === 'Backspace' && pre) {
@@ -197,7 +204,7 @@ export function createEditor(
         range.collapse(true);
         sel.removeAllRanges();
         sel.addRange(range);
-        emit('change', element.innerHTML);
+        emitChange();
       }
     }
   }
@@ -213,6 +220,53 @@ export function createEditor(
       current = current.parentNode;
     }
     return null;
+  }
+
+  /**
+   * Manually unwrap a list the selection is inside of, replacing each
+   * <li> with a <p>. Returns true if an unwrap happened.
+   *
+   * We do this instead of relying on execCommand toggle-off because
+   * browsers unwrap list items into <div> wrappers, which the policy
+   * enforcer then strips (losing content).
+   */
+  function unwrapList(tag: 'UL' | 'OL'): boolean {
+    const sel = doc.getSelection();
+    if (!sel || sel.rangeCount === 0) return false;
+    const anchor = sel.anchorNode;
+    if (!anchor) return false;
+    const list = findAncestor(anchor, tag);
+    if (!list) return false;
+
+    const anchorLi = findAncestor(anchor, 'LI');
+    const parent = list.parentNode;
+    if (!parent) return false;
+
+    const paragraphs: HTMLParagraphElement[] = [];
+    let focusTarget: HTMLParagraphElement | null = null;
+
+    for (const child of Array.from(list.childNodes)) {
+      if (child.nodeType !== 1 || (child as Element).tagName !== 'LI') continue;
+      const p = doc.createElement('p');
+      while (child.firstChild) p.appendChild(child.firstChild);
+      if (!p.firstChild) p.appendChild(doc.createElement('br'));
+      paragraphs.push(p);
+      if (child === anchorLi) focusTarget = p;
+    }
+
+    for (const p of paragraphs) parent.insertBefore(p, list);
+    parent.removeChild(list);
+
+    const target = focusTarget ?? paragraphs[0];
+    if (target) {
+      const r = doc.createRange();
+      r.selectNodeContents(target);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+    emitChange();
+    return true;
   }
 
   function hasAncestor(node: Node, tagName: string): boolean {
@@ -251,10 +305,10 @@ export function createEditor(
           doc.execCommand('formatBlock', false, '<blockquote>');
           break;
         case 'unorderedList':
-          doc.execCommand('insertUnorderedList', false);
+          if (!unwrapList('UL')) doc.execCommand('insertUnorderedList', false);
           break;
         case 'orderedList':
-          doc.execCommand('insertOrderedList', false);
+          if (!unwrapList('OL')) doc.execCommand('insertOrderedList', false);
           break;
         case 'link': {
           if (!value) {
@@ -309,7 +363,7 @@ export function createEditor(
             sel.removeAllRanges();
             sel.addRange(r);
           }
-          emit('change', element.innerHTML);
+          emitChange();
           break;
         }
       }

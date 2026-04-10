@@ -7,4 +7,5 @@ playwright-report/
 *.tgz
 .claude/
 CLAUDE.md
+PLAN.md
 plan.md

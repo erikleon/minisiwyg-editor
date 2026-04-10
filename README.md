@@ -8,11 +8,11 @@ Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k s
 
 Try it in your browser: **[erikleon.github.io/minisiwyg-editor](https://erikleon.github.io/minisiwyg-editor/)**
 
-The demo runs the full editor + toolbar in ~3.5kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
+The demo runs the full editor + toolbar in <5kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
 
 ## Features
 
-- **Tiny.** ~3.5kb gzipped total. 5kb hard limit enforced in CI.
+- **Tiny.** <5kb gzipped total. 5kb hard limit enforced in CI.
 - **Zero runtime dependencies.** Nothing to audit, nothing to break.
 - **XSS protection at every entry point.** Whitelist-based HTML sanitizer blocks `javascript:`, `data:`, event handlers, and encoded bypass attempts. Tested against OWASP XSS cheat sheet vectors.
 - **Declarative policy.** JSON-serializable rules define allowed tags, attributes, protocols, depth, and length. Store policies in a database, transmit them over the wire, validate them with a schema.
@@ -197,8 +197,8 @@ Supported commands: `bold`, `italic`, `heading` (with value `'1'`, `'2'`, or `'3
 import { createToolbar } from 'minisiwyg-editor/toolbar';
 
 const toolbar = createToolbar(editor, {
-  // Optional. Defaults to all built-in actions in this order:
-  actions: ['bold', 'italic', 'heading', 'unorderedList', 'orderedList', 'link', 'codeBlock'],
+  // Optional. Defaults to all built-in actions, grouped by '|' separators:
+  actions: ['bold', 'italic', '|', 'heading', '|', 'unorderedList', 'orderedList', '|', 'link', 'codeBlock'],
 });
 
 document.body.appendChild(toolbar.element);

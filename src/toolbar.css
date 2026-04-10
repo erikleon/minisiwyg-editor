@@ -1,11 +1,25 @@
 .minisiwyg-toolbar {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 2px;
   padding: 4px;
   border: 1px solid #ccc;
   border-radius: 4px;
   background: #f8f8f8;
+}
+
+.minisiwyg-separator {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 6px;
+  background: #d0d0d0;
+}
+
+.minisiwyg-btn svg {
+  display: block;
+  pointer-events: none;
 }
 
 .minisiwyg-btn {

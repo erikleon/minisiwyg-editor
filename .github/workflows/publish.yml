@@ -19,6 +19,7 @@ jobs:
           node-version: 20
           cache: npm
           registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest
       - run: npm ci
       - name: Verify tag matches package.json version
         run: |

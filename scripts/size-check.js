@@ -11,6 +11,9 @@ const entries = [
   { file: 'dist/sanitize.js', label: 'sanitize subpath' },
   { file: 'dist/policy.js', label: 'policy subpath' },
   { file: 'dist/toolbar.js', label: 'toolbar subpath' },
+  { file: 'dist/adapters/react.js', label: 'react adapter' },
+  { file: 'dist/adapters/vue.js', label: 'vue adapter' },
+  { file: 'dist/adapters/svelte.js', label: 'svelte adapter' },
 ];
 
 let failed = false;

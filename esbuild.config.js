@@ -5,6 +5,9 @@ const entryPoints = {
   sanitize: 'src/sanitize.ts',
   policy: 'src/policy.ts',
   toolbar: 'src/toolbar.ts',
+  'adapters/react': 'src/adapters/react.tsx',
+  'adapters/vue': 'src/adapters/vue.ts',
+  'adapters/svelte': 'src/adapters/svelte.ts',
 };
 
 const shared = {
@@ -14,6 +17,8 @@ const shared = {
   platform: 'browser',
   minify: true,
   legalComments: 'none',
+  external: ['react', 'react/jsx-runtime', 'react-dom', 'vue', 'svelte'],
+  jsx: 'automatic',
 };
 
 // ESM output

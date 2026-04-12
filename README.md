@@ -70,6 +70,52 @@ import { createEditor } from 'minisiwyg-editor';
 import { createToolbar } from 'minisiwyg-editor/toolbar';
 ```
 
+## Framework Adapters
+
+Thin wrappers for React, Vue, and Svelte ship as optional subpath entries. They're peerDependencies — install only the framework you use.
+
+### React
+
+```tsx
+import { Minisiwyg } from 'minisiwyg-editor/react';
+
+function App() {
+  return (
+    <Minisiwyg
+      initialHTML="<p>hello</p>"
+      onChange={(html) => console.log(html)}
+      editorRef={(editor) => { /* call editor.exec(...), etc. */ }}
+    />
+  );
+}
+```
+
+### Vue 3
+
+```vue
+<script setup lang="ts">
+import { Minisiwyg } from 'minisiwyg-editor/vue';
+</script>
+
+<template>
+  <Minisiwyg initialHTML="<p>hello</p>" @change="(html) => console.log(html)" />
+</template>
+```
+
+### Svelte
+
+Ships as a Svelte [action](https://svelte.dev/docs/svelte-action) so there's no compiler coupling:
+
+```svelte
+<script lang="ts">
+  import { minisiwyg } from 'minisiwyg-editor/svelte';
+</script>
+
+<div use:minisiwyg={{ initialHTML: '<p>hello</p>', onChange: (html) => console.log(html) }}></div>
+```
+
+All three adapters accept `initialHTML`, `onChange`, and a `policy` override. Pass `value` instead of `initialHTML` to opt in to controlled mode: the adapter reconciles the DOM only when `value` differs from the current editor HTML, so you avoid cursor jumps. Adapters are mount-once — changing `policy` after mount does not re-initialize the editor; remount via `key` (React/Vue) to reset.
+
 ## Sanitizer
 
 The sanitizer is the security core. It parses HTML via a `<template>` element (no script execution), walks the DOM tree depth-first, and removes anything not in the whitelist.

@@ -4,53 +4,101 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - main
+    paths:
+      - CHANGELOG.md
 
 jobs:
+  create-tag:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      created: ${{ steps.tag.outputs.created }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version and create tag
+        id: tag
+        run: |
+          VERSION="v$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git ls-remote --tags origin "$VERSION" | grep -q "$VERSION"; then
+            echo "Tag $VERSION already exists — skipping"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git tag "$VERSION"
+          git push origin "$VERSION"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
   publish:
+    if: always() && !cancelled() && !failure()
+    needs: [create-tag]
     runs-on: ubuntu-latest
     environment: npm
     permissions:
       contents: write
       id-token: write
     steps:
+      - name: Decide whether to publish
+        id: gate
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "version=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ needs.create-tag.outputs.created }}" == "true" ]]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "version=${{ needs.create-tag.outputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.should_publish == 'true'
+        with:
+          ref: ${{ steps.gate.outputs.version }}
       - uses: actions/setup-node@v4
+        if: steps.gate.outputs.should_publish == 'true'
         with:
           node-version: 20
           cache: npm
           registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest
-      - run: npm ci
-      - name: Verify tag matches package.json version
+      - name: Install and verify
+        if: steps.gate.outputs.should_publish == 'true'
         run: |
+          npm install -g npm@latest
+          npm ci
           PKG_VERSION=$(node -p "require('./package.json').version")
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAG_VERSION="${{ steps.gate.outputs.version }}"
+          TAG_VERSION="${TAG_VERSION#v}"
           if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION" >&2
+            echo "Tag does not match package.json version $PKG_VERSION" >&2
             exit 1
           fi
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - run: npm run size-check
-      - run: npx playwright install --with-deps
-      - run: npm run test:browser
-      - run: npm publish --provenance --access public
-      - name: Extract changelog for this version
-        id: changelog
+      - name: Test and build
+        if: steps.gate.outputs.should_publish == 'true'
         run: |
-          VERSION="${GITHUB_REF_NAME}"
-          BODY=$(awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
-          {
-            echo "body<<CHANGELOG_EOF"
-            echo "$BODY"
-            echo "CHANGELOG_EOF"
-          } >> "$GITHUB_OUTPUT"
+          npm run typecheck
+          npm test
+          npm run build
+          npm run size-check
+      - name: Browser tests
+        if: steps.gate.outputs.should_publish == 'true'
+        run: |
+          npx playwright install --with-deps
+          npm run test:browser
+      - name: Publish to npm
+        if: steps.gate.outputs.should_publish == 'true'
+        run: npm publish --provenance --access public
       - name: Create GitHub Release
+        if: steps.gate.outputs.should_publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_BODY: ${{ steps.changelog.outputs.body }}
         run: |
-          echo "$RELEASE_BODY" | gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
+          VERSION="${{ steps.gate.outputs.version }}"
+          BODY=$(awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
+          echo "$BODY" | gh release create "$VERSION" \
+            --title "$VERSION" \
             --notes-file -

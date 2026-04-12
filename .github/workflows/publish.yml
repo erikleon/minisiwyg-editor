@@ -45,13 +45,18 @@ jobs:
     steps:
       - name: Decide whether to publish
         id: gate
+        env:
+          GIT_REF: ${{ github.ref }}
+          GIT_REF_NAME: ${{ github.ref_name }}
+          TAG_CREATED: ${{ needs.create-tag.outputs.created }}
+          TAG_VERSION: ${{ needs.create-tag.outputs.version }}
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          if [[ "$GIT_REF" == refs/tags/v* ]]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "version=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ needs.create-tag.outputs.created }}" == "true" ]]; then
+            echo "version=$GIT_REF_NAME" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG_CREATED" == "true" ]]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "version=${{ needs.create-tag.outputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
           else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
           fi
@@ -67,12 +72,13 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: Install and verify
         if: steps.gate.outputs.should_publish == 'true'
+        env:
+          PUBLISH_VERSION: ${{ steps.gate.outputs.version }}
         run: |
           npm install -g npm@latest
           npm ci
           PKG_VERSION=$(node -p "require('./package.json').version")
-          TAG_VERSION="${{ steps.gate.outputs.version }}"
-          TAG_VERSION="${TAG_VERSION#v}"
+          TAG_VERSION="${PUBLISH_VERSION#v}"
           if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
             echo "Tag does not match package.json version $PKG_VERSION" >&2
             exit 1
@@ -96,9 +102,13 @@ jobs:
         if: steps.gate.outputs.should_publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          PUBLISH_VERSION: ${{ steps.gate.outputs.version }}
         run: |
-          VERSION="${{ steps.gate.outputs.version }}"
-          BODY=$(awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
-          echo "$BODY" | gh release create "$VERSION" \
-            --title "$VERSION" \
+          BODY=$(awk "/^## \\[${PUBLISH_VERSION}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
+          if [ -z "$BODY" ]; then
+            PLAIN="${PUBLISH_VERSION#v}"
+            BODY=$(awk "/^## \\[v?${PLAIN}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
+          fi
+          echo "$BODY" | gh release create "$PUBLISH_VERSION" \
+            --title "$PUBLISH_VERSION" \
             --notes-file -

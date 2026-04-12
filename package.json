@@ -1,6 +1,6 @@
 {
   "name": "minisiwyg-editor",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A sub-5kb, zero-dependency WYSIWYG editor with built-in XSS protection",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -26,6 +26,37 @@
       "types": "./dist/toolbar.d.ts",
       "import": "./dist/toolbar.js",
       "require": "./dist/toolbar.cjs"
+    },
+    "./react": {
+      "types": "./dist/adapters/react.d.ts",
+      "import": "./dist/adapters/react.js",
+      "require": "./dist/adapters/react.cjs"
+    },
+    "./vue": {
+      "types": "./dist/adapters/vue.d.ts",
+      "import": "./dist/adapters/vue.js",
+      "require": "./dist/adapters/vue.cjs"
+    },
+    "./svelte": {
+      "types": "./dist/adapters/svelte.d.ts",
+      "import": "./dist/adapters/svelte.js",
+      "require": "./dist/adapters/svelte.cjs"
+    }
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
+    "vue": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
     }
   },
   "files": [
@@ -66,10 +97,15 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
     "esbuild": "^0.25.0",
+    "happy-dom": "^17.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0",
-    "happy-dom": "^17.0.0",
-    "@playwright/test": "^1.50.0"
+    "vue": "^3.5.32"
   }
 }

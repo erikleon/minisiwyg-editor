@@ -592,6 +592,36 @@ describe('Editor Core', () => {
     editor.destroy();
   });
 
+  it('exec heading toggles off when already in the same heading level', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<h1>title</h1>';
+    selectAll(container.querySelector('h1')!);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('heading', '1');
+    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<p>');
+    editor.destroy();
+  });
+
+  it('exec heading switches level when in a different heading', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<h1>title</h1>';
+    selectAll(container.querySelector('h1')!);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('heading', '2');
+    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<h2>');
+    editor.destroy();
+  });
+
+  it('exec blockquote toggles off when already in a blockquote', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<blockquote>a quote</blockquote>';
+    selectAll(container.querySelector('blockquote')!);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('blockquote');
+    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<p>');
+    editor.destroy();
+  });
+
   it('exec codeBlock wraps in pre via DOM API', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>code</p>';

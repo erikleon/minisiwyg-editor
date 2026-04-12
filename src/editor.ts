@@ -298,11 +298,21 @@ export function createEditor(
           if (!['1', '2', '3'].includes(level)) {
             throw new Error(`Invalid heading level: "${level}". Use 1, 2, or 3`);
           }
-          doc.execCommand('formatBlock', false, `<h${level}>`);
+          const tag = `H${level}`;
+          const anchor = doc.getSelection()?.anchorNode;
+          if (anchor && editor.queryState('heading') && hasAncestor(anchor, tag)) {
+            doc.execCommand('formatBlock', false, '<p>');
+          } else {
+            doc.execCommand('formatBlock', false, `<h${level}>`);
+          }
           break;
         }
         case 'blockquote':
-          doc.execCommand('formatBlock', false, '<blockquote>');
+          if (editor.queryState('blockquote')) {
+            doc.execCommand('formatBlock', false, '<p>');
+          } else {
+            doc.execCommand('formatBlock', false, '<blockquote>');
+          }
           break;
         case 'unorderedList':
           if (!unwrapList('UL')) doc.execCommand('insertUnorderedList', false);

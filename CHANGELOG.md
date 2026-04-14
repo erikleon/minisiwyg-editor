@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.2] - 2026-04-13
+
+### Added
+- Underline toolbar action with matching `editor.exec('underline')` command and `queryState('underline')` support. The default sanitization policy now allows `<u>` so underlined runs survive paste and round-tripping.
+- View Source toolbar button that toggles a read-only `<pre>` showing the editor's current HTML. While active, the editor element is hidden and other toolbar buttons are disabled. Toggling off restores the editor and any consumer-set inline `display` value.
+- `Editor.element` is now exposed on the public Editor interface, giving consumers and the toolbar direct access to the contentEditable host element.
+
 ## [v0.2.1] - 2026-04-12
 
 ### Fixed

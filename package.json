@@ -1,6 +1,6 @@
 {
   "name": "minisiwyg-editor",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A sub-5kb, zero-dependency WYSIWYG editor with built-in XSS protection",
   "type": "module",
   "main": "./dist/index.cjs",

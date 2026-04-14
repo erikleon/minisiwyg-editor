@@ -6,6 +6,7 @@ const policy: SanitizePolicy = {
     br: [],
     strong: [],
     em: [],
+    u: [],
     a: ['href', 'title', 'target'],
     h1: [],
     h2: [],

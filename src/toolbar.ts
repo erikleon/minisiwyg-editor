@@ -7,6 +7,7 @@ export type { ToolbarOptions, Toolbar } from './types';
 const ACTION_LABELS: Record<string, string> = {
   bold: 'Bold',
   italic: 'Italic',
+  underline: 'Underline',
   heading: 'Heading',
   blockquote: 'Blockquote',
   unorderedList: 'Bulleted list',
@@ -14,6 +15,7 @@ const ACTION_LABELS: Record<string, string> = {
   link: 'Link',
   unlink: 'Remove link',
   codeBlock: 'Code block',
+  viewSource: 'View source',
 };
 
 // Inline SVG path data for each action. Rendered inside a shared <svg> wrapper
@@ -21,6 +23,7 @@ const ACTION_LABELS: Record<string, string> = {
 const ICONS: Record<string, string> = {
   bold: '<path fill="currentColor" d="M6 4h5a3 3 0 010 6H6zm0 6h6a3 3 0 010 6H6z"/>',
   italic: '<path d="M8 4h8M6 16h8M13 4l-4 12"/>',
+  underline: '<path d="M6 4v6a4 4 0 008 0V4M5 17h10"/>',
   heading: '<path d="M5 4v12M13 4v12M5 10h8"/>',
   blockquote: '<path d="M5 8q0-3 3-4M12 8q0-3 3-4M4 10h4v4H4zM11 10h4v4h-4z"/>',
   unorderedList: '<path d="M7 6h11M7 10h11M7 14h11"/><circle fill="currentColor" cx="3.5" cy="6" r="1.2"/><circle fill="currentColor" cx="3.5" cy="10" r="1.2"/><circle fill="currentColor" cx="3.5" cy="14" r="1.2"/>',
@@ -28,6 +31,7 @@ const ICONS: Record<string, string> = {
   link: '<path d="M9 11a3 3 0 004 0l2-2a3 3 0 00-4-4l-1 1M11 9a3 3 0 00-4 0l-2 2a3 3 0 004 4l1-1"/>',
   unlink: '<path d="M9 11a3 3 0 004 0l2-2a3 3 0 00-4-4l-1 1M11 9a3 3 0 00-4 0l-2 2a3 3 0 004 4l1-1M3 3l14 14"/>',
   codeBlock: '<path d="M8 6l-4 4 4 4M12 6l4 4-4 4"/>',
+  viewSource: '<path d="M7 5l-4 5 4 5M13 5l4 5-4 5"/>',
 };
 
 const SVG_OPEN =
@@ -36,6 +40,7 @@ const SVG_OPEN =
 const DEFAULT_ACTIONS = [
   'bold',
   'italic',
+  'underline',
   '|',
   'heading',
   '|',
@@ -44,6 +49,8 @@ const DEFAULT_ACTIONS = [
   '|',
   'link',
   'codeBlock',
+  '|',
+  'viewSource',
 ];
 
 /**
@@ -105,9 +112,14 @@ export function createToolbar(
 
   // Caller is responsible for placing toolbar.element in the DOM
 
+  let sourceEl: HTMLPreElement | null = null;
+  let savedDisplay = '';
+
   function onButtonClick(action: string): void {
     try {
-      if (action === 'link') {
+      if (action === 'viewSource') {
+        toggleSourceMode();
+      } else if (action === 'link') {
         const url = window.prompt('Enter URL')?.trim();
         if (!url) return;
         if (!isProtocolAllowed(url, DEFAULT_POLICY.protocols)) return;
@@ -121,9 +133,34 @@ export function createToolbar(
     updateActiveStates();
   }
 
+  function toggleSourceMode(): void {
+    if (sourceEl) {
+      sourceEl.remove();
+      sourceEl = null;
+      editor.element.style.display = savedDisplay;
+    } else {
+      savedDisplay = editor.element.style.display;
+      sourceEl = doc.createElement('pre');
+      sourceEl.className = 'minisiwyg-source';
+      sourceEl.textContent = editor.getHTML();
+      editor.element.style.display = 'none';
+      editor.element.parentNode?.insertBefore(sourceEl, editor.element.nextSibling);
+    }
+    const active = !!sourceEl;
+    for (let i = 0; i < buttons.length; i++) {
+      if (buttonActions[i] === 'viewSource') {
+        buttons[i].setAttribute('aria-pressed', String(active));
+        buttons[i].classList.toggle('minisiwyg-btn-active', active);
+      } else {
+        buttons[i].disabled = active;
+      }
+    }
+  }
+
   function updateActiveStates(): void {
     for (let i = 0; i < buttons.length; i++) {
       const action = buttonActions[i];
+      if (action === 'viewSource') continue;
       try {
         const active = editor.queryState(action);
         buttons[i].setAttribute('aria-pressed', String(active));
@@ -180,6 +217,11 @@ export function createToolbar(
       cancelAnimationFrame(rafId);
       container.removeEventListener('keydown', onKeydown);
       doc.removeEventListener('selectionchange', onSelectionChange);
+      if (sourceEl) {
+        sourceEl.remove();
+        sourceEl = null;
+        editor.element.style.display = savedDisplay;
+      }
       // Remove buttons
       for (const btn of buttons) {
         btn.remove();

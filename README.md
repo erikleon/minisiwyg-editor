@@ -233,9 +233,10 @@ The returned `Editor` exposes:
 | `getHTML()` | Returns the current sanitized HTML. |
 | `getText()` | Returns the current text content. |
 | `on(event, handler)` | Subscribe to `change`, `paste`, `overflow`, or `error` events. |
+| `element` | The contentEditable HTML element backing the editor. |
 | `destroy()` | Disconnect the observer and remove all listeners. |
 
-Supported commands: `bold`, `italic`, `heading` (with value `'1'`, `'2'`, or `'3'`), `blockquote`, `unorderedList`, `orderedList`, `link` (with URL value), `unlink`, `codeBlock`.
+Supported commands: `bold`, `italic`, `underline`, `heading` (with value `'1'`, `'2'`, or `'3'`), `blockquote`, `unorderedList`, `orderedList`, `link` (with URL value), `unlink`, `codeBlock`.
 
 ## Toolbar
 
@@ -244,13 +245,13 @@ import { createToolbar } from 'minisiwyg-editor/toolbar';
 
 const toolbar = createToolbar(editor, {
   // Optional. Defaults to all built-in actions, grouped by '|' separators:
-  actions: ['bold', 'italic', '|', 'heading', '|', 'unorderedList', 'orderedList', '|', 'link', 'codeBlock'],
+  actions: ['bold', 'italic', 'underline', '|', 'heading', '|', 'unorderedList', 'orderedList', '|', 'link', 'codeBlock', '|', 'viewSource'],
 });
 
 document.body.appendChild(toolbar.element);
 ```
 
-The toolbar renders a `<div role="toolbar">` containing `<button>` elements with `aria-label` and `aria-pressed` attributes. Arrow keys move focus between buttons; Tab exits the toolbar. The link button uses `window.prompt()` to collect a URL and validates it against the active policy's protocols. Call `toolbar.destroy()` to remove it.
+The toolbar renders a `<div role="toolbar">` containing `<button>` elements with `aria-label` and `aria-pressed` attributes. Arrow keys move focus between buttons; Tab exits the toolbar. The link button uses `window.prompt()` to collect a URL and validates it against the active policy's protocols. The `viewSource` button toggles a read-only `<pre>` showing the editor's current HTML; while active, the editor is hidden and other toolbar buttons are disabled. Call `toolbar.destroy()` to remove it.
 
 ## Security Model
 

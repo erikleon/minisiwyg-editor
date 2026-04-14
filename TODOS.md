@@ -1,5 +1,14 @@
 # TODOS
 
+## Toolbar
+
+### [A11y] Tab-order skips disabled buttons during view-source mode
+**Priority:** P3
+
+While `viewSource` is active, all other toolbar buttons get `disabled = true`, which causes browsers to skip them in sequential Tab order. Keyboard users tab right out of the toolbar instead of landing on the view-source button. Switch to `aria-disabled="true"` plus a click-guard so focus order is preserved.
+
+Files: `src/toolbar.ts` (`toggleSourceMode`).
+
 ## v2 — Post-v1 Release
 
 ### 1. Plugin system architecture

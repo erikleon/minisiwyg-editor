@@ -27,6 +27,7 @@ export interface Editor {
   getText(): string;
   destroy(): void;
   on(event: string, handler: (...args: unknown[]) => void): void;
+  readonly element: HTMLElement;
 }
 
 export interface ToolbarOptions {

@@ -462,6 +462,59 @@ describe('Editor Core', () => {
     editor.destroy();
   });
 
+  it('exec underline on selection calls execCommand', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>hello world</p>';
+    selectAll(container);
+    document.execCommand = vi.fn(() => true);
+    editor.exec('underline');
+    expect(document.execCommand).toHaveBeenCalledWith('underline', false);
+    editor.destroy();
+  });
+
+  it('queryState for underline returns true inside <u>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><u>underlined</u></p>';
+    const u = container.querySelector('u')!;
+    const range = document.createRange();
+    range.setStart(u.firstChild!, 2);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    expect(editor.queryState('underline')).toBe(true);
+    editor.destroy();
+  });
+
+  it('queryState for underline returns false outside <u>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>plain</p>';
+    cursorToEnd(container);
+    expect(editor.queryState('underline')).toBe(false);
+    editor.destroy();
+  });
+
+  it('default policy preserves <u> tags on paste', async () => {
+    const editor = createEditor(container);
+    cursorToEnd(container);
+
+    const pasteEvent = createPasteEvent({
+      'text/html': '<p><u>under</u></p>',
+    });
+    container.dispatchEvent(pasteEvent);
+
+    await flush();
+    expect(container.querySelector('u')).not.toBeNull();
+    expect(container.querySelector('u')!.textContent).toBe('under');
+    editor.destroy();
+  });
+
+  it('exposes the contentEditable element via editor.element', () => {
+    const editor = createEditor(container);
+    expect(editor.element).toBe(container);
+    editor.destroy();
+  });
+
   it('exec blockquote calls formatBlock', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>a quote</p>';

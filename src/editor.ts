@@ -13,6 +13,7 @@ type EventHandler = (...args: unknown[]) => void;
 const SUPPORTED_COMMANDS = new Set([
   'bold',
   'italic',
+  'underline',
   'heading',
   'blockquote',
   'unorderedList',
@@ -293,6 +294,9 @@ export function createEditor(
         case 'italic':
           doc.execCommand('italic', false);
           break;
+        case 'underline':
+          doc.execCommand('underline', false);
+          break;
         case 'heading': {
           const level = value ?? '1';
           if (!['1', '2', '3'].includes(level)) {
@@ -395,6 +399,8 @@ export function createEditor(
           return hasAncestor(node, 'STRONG') || hasAncestor(node, 'B');
         case 'italic':
           return hasAncestor(node, 'EM') || hasAncestor(node, 'I');
+        case 'underline':
+          return hasAncestor(node, 'U');
         case 'heading':
           return hasAncestor(node, 'H1') || hasAncestor(node, 'H2') || hasAncestor(node, 'H3');
         case 'blockquote':
@@ -434,6 +440,8 @@ export function createEditor(
       if (!handlers[event]) handlers[event] = [];
       handlers[event].push(handler);
     },
+
+    element,
   };
 
   return editor;

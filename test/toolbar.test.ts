@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createToolbar } from '../src/toolbar';
 import type { Editor, Toolbar } from '../src/types';
 
-function createMockEditor(): Editor {
+function createMockEditor(element?: HTMLElement): Editor {
   return {
     exec: vi.fn(),
     queryState: vi.fn(() => false),
@@ -10,6 +10,7 @@ function createMockEditor(): Editor {
     getText: vi.fn(() => ''),
     destroy: vi.fn(),
     on: vi.fn(),
+    element: element ?? document.createElement('div'),
   };
 }
 
@@ -18,8 +19,8 @@ describe('createToolbar', () => {
   let toolbar: Toolbar;
 
   beforeEach(() => {
-    editor = createMockEditor();
     document.body.innerHTML = '<div id="editor" contenteditable="true"></div>';
+    editor = createMockEditor(document.getElementById('editor') as HTMLElement);
   });
 
   afterEach(() => {
@@ -36,7 +37,7 @@ describe('createToolbar', () => {
   it('renders default actions as buttons', () => {
     toolbar = createToolbar(editor);
     const buttons = toolbar.element.querySelectorAll('button');
-    expect(buttons.length).toBe(7); // bold, italic, heading, unorderedList, orderedList, link, codeBlock
+    expect(buttons.length).toBe(9);
   });
 
   it('each button has correct aria-label', () => {
@@ -46,12 +47,21 @@ describe('createToolbar', () => {
     expect(labels).toEqual([
       'Bold',
       'Italic',
+      'Underline',
       'Heading',
       'Bulleted list',
       'Numbered list',
       'Link',
       'Code block',
+      'View source',
     ]);
+  });
+
+  it('click on underline button calls editor.exec("underline")', () => {
+    toolbar = createToolbar(editor);
+    const underlineBtn = toolbar.element.querySelector('.minisiwyg-btn-underline') as HTMLButtonElement;
+    underlineBtn.click();
+    expect(editor.exec).toHaveBeenCalledWith('underline');
   });
 
   it('click on bold button calls editor.exec("bold")', () => {
@@ -133,7 +143,7 @@ describe('createToolbar', () => {
   it('default actions render separators between groups', () => {
     toolbar = createToolbar(editor);
     const seps = toolbar.element.querySelectorAll('.minisiwyg-separator');
-    expect(seps.length).toBe(3);
+    expect(seps.length).toBe(4);
     seps.forEach((s) => {
       expect(s.getAttribute('role')).toBe('separator');
       expect(s.getAttribute('aria-orientation')).toBe('vertical');
@@ -186,13 +196,13 @@ describe('createToolbar', () => {
     toolbar = createToolbar(editor, { element: wrapper });
     expect(toolbar.element).toBe(wrapper);
     expect(wrapper.getAttribute('role')).toBe('toolbar');
-    expect(wrapper.querySelectorAll('button').length).toBe(7);
+    expect(wrapper.querySelectorAll('button').length).toBe(9);
   });
 
   it('destroy removes buttons and cleans up', () => {
     toolbar = createToolbar(editor);
     document.body.appendChild(toolbar.element);
-    expect(toolbar.element.querySelectorAll('button').length).toBe(7);
+    expect(toolbar.element.querySelectorAll('button').length).toBe(9);
     toolbar.destroy();
     expect(toolbar.element.querySelectorAll('button').length).toBe(0);
   });
@@ -258,6 +268,65 @@ describe('createToolbar', () => {
     expect(boldBtn.getAttribute('aria-pressed')).toBe('true');
     const headingBtn = toolbar.element.querySelector('.minisiwyg-btn-heading') as HTMLButtonElement;
     expect(headingBtn.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('viewSource button shows source <pre> and hides editor element', () => {
+    (editor.getHTML as ReturnType<typeof vi.fn>).mockReturnValue('<p>hello</p>');
+    toolbar = createToolbar(editor);
+    document.body.appendChild(toolbar.element);
+    const srcBtn = toolbar.element.querySelector('.minisiwyg-btn-viewSource') as HTMLButtonElement;
+    srcBtn.click();
+    const pre = document.querySelector('.minisiwyg-source') as HTMLPreElement;
+    expect(pre).not.toBeNull();
+    expect(pre.textContent).toBe('<p>hello</p>');
+    expect((editor.element as HTMLElement).style.display).toBe('none');
+    expect(srcBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(srcBtn.classList.contains('minisiwyg-btn-active')).toBe(true);
+  });
+
+  it('viewSource preserves consumer-set inline display on toggle off', () => {
+    (editor.element as HTMLElement).style.display = 'flex';
+    toolbar = createToolbar(editor);
+    document.body.appendChild(toolbar.element);
+    const srcBtn = toolbar.element.querySelector('.minisiwyg-btn-viewSource') as HTMLButtonElement;
+    srcBtn.click();
+    expect((editor.element as HTMLElement).style.display).toBe('none');
+    srcBtn.click();
+    expect((editor.element as HTMLElement).style.display).toBe('flex');
+  });
+
+  it('viewSource button toggles off and restores editor', () => {
+    toolbar = createToolbar(editor);
+    document.body.appendChild(toolbar.element);
+    const srcBtn = toolbar.element.querySelector('.minisiwyg-btn-viewSource') as HTMLButtonElement;
+    srcBtn.click();
+    srcBtn.click();
+    expect(document.querySelector('.minisiwyg-source')).toBeNull();
+    expect((editor.element as HTMLElement).style.display).toBe('');
+    expect(srcBtn.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('viewSource disables other buttons while active and re-enables on toggle off', () => {
+    toolbar = createToolbar(editor);
+    document.body.appendChild(toolbar.element);
+    const srcBtn = toolbar.element.querySelector('.minisiwyg-btn-viewSource') as HTMLButtonElement;
+    const boldBtn = toolbar.element.querySelector('.minisiwyg-btn-bold') as HTMLButtonElement;
+    srcBtn.click();
+    expect(boldBtn.disabled).toBe(true);
+    expect(srcBtn.disabled).toBe(false);
+    srcBtn.click();
+    expect(boldBtn.disabled).toBe(false);
+  });
+
+  it('destroy cleans up source <pre> and restores editor display', () => {
+    toolbar = createToolbar(editor);
+    document.body.appendChild(toolbar.element);
+    const srcBtn = toolbar.element.querySelector('.minisiwyg-btn-viewSource') as HTMLButtonElement;
+    srcBtn.click();
+    expect(document.querySelector('.minisiwyg-source')).not.toBeNull();
+    toolbar.destroy();
+    expect(document.querySelector('.minisiwyg-source')).toBeNull();
+    expect((editor.element as HTMLElement).style.display).toBe('');
   });
 
   it('destroy removes selectionchange listener', () => {

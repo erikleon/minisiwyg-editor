@@ -253,6 +253,77 @@ document.body.appendChild(toolbar.element);
 
 The toolbar renders a `<div role="toolbar">` containing `<button>` elements with `aria-label` and `aria-pressed` attributes. Arrow keys move focus between buttons; Tab exits the toolbar. The link button uses `window.prompt()` to collect a URL and validates it against the active policy's protocols. The `viewSource` button toggles a read-only `<pre>` showing the editor's current HTML; while active, the editor is hidden and other toolbar buttons are disabled. Call `toolbar.destroy()` to remove it.
 
+## Plugins
+
+Plugins extend the editor without forking. A plugin is a plain object that can contribute tags/attributes/protocols to the sanitizer policy, register editor commands, and register toolbar actions. Pass the same `plugins: [...]` array to both `createEditor` and `createToolbar`.
+
+```typescript
+import { createEditor } from 'minisiwyg-editor';
+import { createToolbar } from 'minisiwyg-editor/toolbar';
+import type { Plugin } from 'minisiwyg-editor';
+
+const highlight: Plugin = {
+  name: 'highlight',
+  policy: { tags: { mark: [] } },
+  commands: {
+    highlight: {
+      exec(ctx) {
+        const sel = ctx.doc.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        const mark = ctx.doc.createElement('mark');
+        mark.appendChild(range.extractContents());
+        range.insertNode(mark);
+        ctx.emit('change');
+      },
+    },
+  },
+  actions: {
+    highlight: { label: 'Highlight', icon: '<path d="..."/>' },
+  },
+};
+
+const editor = createEditor(element, { plugins: [highlight] });
+const toolbar = createToolbar(editor, { plugins: [highlight] });
+editor.exec('highlight');
+```
+
+### Plugin shape
+
+```typescript
+interface Plugin {
+  name: string;                       // used for dedup + error messages
+  policy?: {                          // merged additively into the sanitizer policy
+    tags?: Record<string, string[]>;  // tag → allowed attributes (keys must be lowercase)
+    protocols?: string[];             // unioned with policy.protocols
+  };
+  commands?: Record<string, {
+    exec(ctx: PluginContext, value?: string): void;
+    queryState?(ctx: PluginContext): boolean;
+  }>;
+  actions?: Record<string, {
+    label: string;
+    icon?: string;                    // raw inner-SVG markup
+  }>;
+}
+
+interface PluginContext {
+  readonly element: HTMLElement;      // editor root
+  readonly doc: Document;
+  readonly policy: SanitizePolicy;    // merged, post-plugin
+  emit(event: string, ...args: unknown[]): void;
+}
+```
+
+### Safety rules
+
+Plugin inputs go through the same enforcement as built-in config:
+
+- `javascript:` and `data:` URLs remain hardcoded denials, regardless of `plugin.policy.protocols`.
+- Plugin tag keys must be lowercase. `{ tags: { MARK: [] } }` throws at `createEditor` time.
+- Duplicate command names throw at registration — whether across plugins or colliding with a built-in (`bold`, `italic`, `link`, etc.).
+- Plugin policy deltas are merged before the MutationObserver and paste handler see the policy, so plugin-added tags go through the same whitelist.
+
 ## Security Model
 
 The editor has two layers of XSS protection:

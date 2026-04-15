@@ -1,4 +1,11 @@
-import type { SanitizePolicy, EditorOptions, Editor } from './types';
+import type {
+  SanitizePolicy,
+  EditorOptions,
+  Editor,
+  Plugin,
+  PluginCommand,
+  PluginContext,
+} from './types';
 import { DEFAULT_POLICY } from './defaults';
 import { sanitizeToFragment } from './sanitize';
 import { createPolicyEnforcer, type PolicyEnforcer } from './policy';
@@ -51,6 +58,35 @@ export function createEditor(
     maxLength: src.maxLength,
     protocols: [...src.protocols],
   };
+
+  const plugins: Plugin[] = options?.plugins ?? [];
+  const pluginCommands = new Map<string, PluginCommand>();
+  for (const plugin of plugins) {
+    const delta = plugin.policy;
+    if (delta?.tags) {
+      for (const [tag, attrs] of Object.entries(delta.tags)) {
+        if (tag !== tag.toLowerCase()) {
+          throw new Error(
+            `plugin '${plugin.name}' tag '${tag}' must be lowercase`,
+          );
+        }
+        policy.tags[tag] = [...new Set([...(policy.tags[tag] ?? []), ...attrs])];
+      }
+    }
+    if (delta?.protocols) {
+      policy.protocols = [...new Set([...policy.protocols, ...delta.protocols])];
+    }
+    if (plugin.commands) {
+      for (const [name, cmd] of Object.entries(plugin.commands)) {
+        if (SUPPORTED_COMMANDS.has(name) || pluginCommands.has(name)) {
+          throw new Error(
+            `plugin '${plugin.name}' duplicates command '${name}'`,
+          );
+        }
+        pluginCommands.set(name, cmd);
+      }
+    }
+  }
 
   const handlers: Record<string, EventHandler[]> = {};
   const doc = element.ownerDocument;
@@ -279,8 +315,27 @@ export function createEditor(
     return false;
   }
 
+  const pluginCtx: PluginContext = {
+    element,
+    doc,
+    policy,
+    emit(event: string, ...args: unknown[]): void {
+      if (event === 'change') {
+        emitChange();
+      } else {
+        emit(event as EditorEvent, ...args);
+      }
+    },
+  };
+
   const editor: Editor = {
     exec(command: string, value?: string): void {
+      const pcmd = pluginCommands.get(command);
+      if (pcmd) {
+        element.focus();
+        pcmd.exec(pluginCtx, value);
+        return;
+      }
       if (!SUPPORTED_COMMANDS.has(command)) {
         throw new Error(`Unknown editor command: "${command}"`);
       }
@@ -384,6 +439,8 @@ export function createEditor(
     },
 
     queryState(command: string): boolean {
+      const pcmd = pluginCommands.get(command);
+      if (pcmd) return pcmd.queryState?.(pluginCtx) ?? false;
       if (!SUPPORTED_COMMANDS.has(command)) {
         throw new Error(`Unknown editor command: "${command}"`);
       }

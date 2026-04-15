@@ -4,6 +4,11 @@ export type {
   Editor,
   ToolbarOptions,
   Toolbar,
+  Plugin,
+  PluginContext,
+  PluginCommand,
+  PluginAction,
+  PluginPolicyDelta,
 } from './types';
 export { DEFAULT_POLICY } from './defaults';
 export { sanitize, sanitizeToFragment } from './sanitize';

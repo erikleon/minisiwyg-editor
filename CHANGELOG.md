@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] - 2026-04-14
+
+### Added
+- Plugin API. Pass `plugins: [...]` to `createEditor` and `createToolbar` to extend minisiwyg without forking. A plugin can (a) add allowed tags/attributes/protocols to the sanitizer policy, (b) register new editor commands with `exec` and optional `queryState`, and (c) register toolbar actions with a label and icon. Plugin commands receive a `PluginContext` with the editor element, document, merged policy, and an `emit` hook that routes `change` back through the normal change pipeline.
+- New public types: `Plugin`, `PluginContext`, `PluginCommand`, `PluginAction`, `PluginPolicyDelta`, exported from the main entry.
+
+### Changed
+- Total gzipped budget raised from 5kb to 6kb (full bundle now 5380 bytes; 6kb hard limit enforced in CI) to make room for the plugin API without dropping features. Marketing claim updated from "sub-5kb" to "sub-6kb" across README, demo, and package description.
+
+### Security
+- Plugin policy deltas are merged additively into the sanitizer policy before the MutationObserver and paste handler see it, so plugin-added tags go through the same whitelist enforcement as built-in tags. `javascript:` and `data:` URLs remain hardcoded denials regardless of plugin input. Plugin tag keys must be lowercase (throws at registration) to prevent case-mismatch bypasses. Duplicate command names (across plugins or against built-ins) throw at registration.
+
 ## [v0.2.2] - 2026-04-13
 
 ### Added

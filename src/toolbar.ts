@@ -64,7 +64,21 @@ export function createToolbar(
   editor: Editor,
   options?: ToolbarOptions,
 ): Toolbar {
-  const actions = options?.actions ?? DEFAULT_ACTIONS;
+  const plugins = options?.plugins ?? [];
+  const labels: Record<string, string> = { ...ACTION_LABELS };
+  const icons: Record<string, string> = { ...ICONS };
+  const pluginActionIds: string[] = [];
+
+  for (const plugin of plugins) {
+    if (!plugin.actions) continue;
+    for (const [id, action] of Object.entries(plugin.actions)) {
+      labels[id] = action.label;
+      if (action.icon) icons[id] = action.icon;
+      pluginActionIds.push(id);
+    }
+  }
+
+  const actions = options?.actions ?? [...DEFAULT_ACTIONS, ...pluginActionIds];
   const doc = document;
 
   // Container
@@ -89,11 +103,11 @@ export function createToolbar(
     const btn = doc.createElement('button');
     btn.type = 'button';
     btn.className = `minisiwyg-btn minisiwyg-btn-${action}`;
-    const label = ACTION_LABELS[action] ?? action;
+    const label = labels[action] ?? action;
     btn.setAttribute('aria-label', label);
     btn.setAttribute('aria-pressed', 'false');
     btn.title = label;
-    const icon = ICONS[action];
+    const icon = icons[action];
     if (icon) {
       btn.innerHTML = SVG_OPEN + icon + '</svg>';
     } else {

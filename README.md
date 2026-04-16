@@ -1,6 +1,6 @@
 # minisiwyg-editor
 
-A sub-5kb gzipped, zero-dependency WYSIWYG editor with built-in XSS protection.
+A sub-6kb gzipped, zero-dependency WYSIWYG editor with built-in XSS protection.
 
 Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k stars, abandoned with known XSS vulnerabilities). minisiwyg-editor treats security as architecture, not an afterthought. The sanitizer is built into the editor via a declarative policy engine, not bolted on as a dependency.
 
@@ -8,11 +8,11 @@ Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k s
 
 Try it in your browser: **[erikleon.github.io/minisiwyg-editor](https://erikleon.github.io/minisiwyg-editor/)**
 
-The demo runs the full editor + toolbar in <5kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
+The demo runs the full editor + toolbar in <6kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
 
 ## Features
 
-- **Tiny.** <5kb gzipped total. 5kb hard limit enforced in CI.
+- **Tiny.** <6kb gzipped total. 6kb hard limit enforced in CI.
 - **Zero runtime dependencies.** Nothing to audit, nothing to break.
 - **XSS protection at every entry point.** Whitelist-based HTML sanitizer blocks `javascript:`, `data:`, event handlers, and encoded bypass attempts. Tested against OWASP XSS cheat sheet vectors.
 - **Declarative policy.** JSON-serializable rules define allowed tags, attributes, protocols, depth, and length. Store policies in a database, transmit them over the wire, validate them with a schema.
@@ -253,6 +253,77 @@ document.body.appendChild(toolbar.element);
 
 The toolbar renders a `<div role="toolbar">` containing `<button>` elements with `aria-label` and `aria-pressed` attributes. Arrow keys move focus between buttons; Tab exits the toolbar. The link button uses `window.prompt()` to collect a URL and validates it against the active policy's protocols. The `viewSource` button toggles a read-only `<pre>` showing the editor's current HTML; while active, the editor is hidden and other toolbar buttons are disabled. Call `toolbar.destroy()` to remove it.
 
+## Plugins
+
+Plugins extend the editor without forking. A plugin is a plain object that can contribute tags/attributes/protocols to the sanitizer policy, register editor commands, and register toolbar actions. Pass the same `plugins: [...]` array to both `createEditor` and `createToolbar`.
+
+```typescript
+import { createEditor } from 'minisiwyg-editor';
+import { createToolbar } from 'minisiwyg-editor/toolbar';
+import type { Plugin } from 'minisiwyg-editor';
+
+const highlight: Plugin = {
+  name: 'highlight',
+  policy: { tags: { mark: [] } },
+  commands: {
+    highlight: {
+      exec(ctx) {
+        const sel = ctx.doc.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        const mark = ctx.doc.createElement('mark');
+        mark.appendChild(range.extractContents());
+        range.insertNode(mark);
+        ctx.emit('change');
+      },
+    },
+  },
+  actions: {
+    highlight: { label: 'Highlight', icon: '<path d="..."/>' },
+  },
+};
+
+const editor = createEditor(element, { plugins: [highlight] });
+const toolbar = createToolbar(editor, { plugins: [highlight] });
+editor.exec('highlight');
+```
+
+### Plugin shape
+
+```typescript
+interface Plugin {
+  name: string;                       // used for dedup + error messages
+  policy?: {                          // merged additively into the sanitizer policy
+    tags?: Record<string, string[]>;  // tag → allowed attributes (keys must be lowercase)
+    protocols?: string[];             // unioned with policy.protocols
+  };
+  commands?: Record<string, {
+    exec(ctx: PluginContext, value?: string): void;
+    queryState?(ctx: PluginContext): boolean;
+  }>;
+  actions?: Record<string, {
+    label: string;
+    icon?: string;                    // raw inner-SVG markup
+  }>;
+}
+
+interface PluginContext {
+  readonly element: HTMLElement;      // editor root
+  readonly doc: Document;
+  readonly policy: SanitizePolicy;    // merged, post-plugin
+  emit(event: string, ...args: unknown[]): void;
+}
+```
+
+### Safety rules
+
+Plugin inputs go through the same enforcement as built-in config:
+
+- `javascript:` and `data:` URLs remain hardcoded denials, regardless of `plugin.policy.protocols`.
+- Plugin tag keys must be lowercase. `{ tags: { MARK: [] } }` throws at `createEditor` time.
+- Duplicate command names throw at registration — whether across plugins or colliding with a built-in (`bold`, `italic`, `link`, etc.).
+- Plugin policy deltas are merged before the MutationObserver and paste handler see the policy, so plugin-added tags go through the same whitelist.
+
 ## Security Model
 
 The editor has two layers of XSS protection:
@@ -288,7 +359,7 @@ npm install              # install dev dependencies
 npm run build            # esbuild: ESM + CJS output + type declarations
 npm test                 # vitest with happy-dom
 npx playwright test      # OWASP XSS vectors in real browsers
-npm run size-check       # fails if total gzipped > 5kb
+npm run size-check       # fails if total gzipped > 6kb
 npm run typecheck        # TypeScript type checking
 ```
 

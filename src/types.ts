@@ -17,6 +17,7 @@ export interface SanitizePolicy {
 
 export interface EditorOptions {
   policy?: SanitizePolicy;
+  plugins?: Plugin[];
   onChange?: (html: string) => void;
 }
 
@@ -33,6 +34,36 @@ export interface Editor {
 export interface ToolbarOptions {
   actions?: string[];
   element?: HTMLElement;
+  plugins?: Plugin[];
+}
+
+export interface PluginContext {
+  readonly element: HTMLElement;
+  readonly doc: Document;
+  readonly policy: SanitizePolicy;
+  emit(event: string, ...args: unknown[]): void;
+}
+
+export interface PluginCommand {
+  exec(ctx: PluginContext, value?: string): void;
+  queryState?(ctx: PluginContext): boolean;
+}
+
+export interface PluginAction {
+  label: string;
+  icon?: string;
+}
+
+export interface PluginPolicyDelta {
+  tags?: Record<string, string[]>;
+  protocols?: string[];
+}
+
+export interface Plugin {
+  name: string;
+  policy?: PluginPolicyDelta;
+  commands?: Record<string, PluginCommand>;
+  actions?: Record<string, PluginAction>;
 }
 
 export interface Toolbar {

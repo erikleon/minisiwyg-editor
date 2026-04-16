@@ -75,7 +75,7 @@ ${css}
 </head>
 <body>
 <h1>minisiwyg-editor</h1>
-<p class="tagline">A sub-5kb WYSIWYG editor with built-in XSS protection. Try pasting HTML — including XSS payloads.</p>
+<p class="tagline">A sub-6kb WYSIWYG editor with built-in XSS protection. Try pasting HTML — including XSS payloads.</p>
 
 <div id="toolbar-host"></div>
 <div id="editor" class="editor"><p>Type here, paste HTML, or use the toolbar. Try pasting <code>&lt;img src=x onerror=alert(1)&gt;</code> &mdash; the sanitizer will strip it.</p></div>

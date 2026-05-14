@@ -11,9 +11,9 @@ Files: `src/toolbar.ts` (`toggleSourceMode`).
 
 ## v2 — Post-v1 Release
 
-### 2. Selection/Range API migration
-Replace execCommand with direct DOM manipulation via Selection/Range APIs. execCommand is deprecated. Browser vendors may reduce reliability. Selection/Range gives full control over output (no b/strong divergence).
-**Depends on:** v1 release, real-world execCommand issue data from v1 users.
+### ~~2. Selection/Range API migration~~ ✅ COMPLETED
+~~Replace execCommand with direct DOM manipulation via Selection/Range APIs. execCommand is deprecated. Browser vendors may reduce reliability. Selection/Range gives full control over output (no b/strong divergence).~~
+**Completed:** v0.4.0 (2026-05-13)
 
 ### 3. Framework adapters (React/Vue/Svelte)
 Official wrapper components for major frameworks. Each wrapper is ~20 lines: useEffect to call createEditor, return cleanup from destroy().

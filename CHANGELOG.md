@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] - 2026-05-13
+
+### Changed
+- All formatting commands (`bold`, `italic`, `underline`, `heading`, `blockquote`, `unorderedList`, `orderedList`, `link`, `unlink`) now use the Selection/Range API instead of the deprecated `document.execCommand`. This eliminates divergent `<b>`/`<strong>` output across browsers, gives full control over the produced markup, and future-proofs the editor against browser vendors removing `execCommand` support.
+
+### Removed
+- All internal calls to `document.execCommand`. The API was deprecated in 2016 and its removal is no longer hypothetical in non-standard browsing environments.
+
 ## [v0.3.0] - 2026-04-14
 
 ### Added

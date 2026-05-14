@@ -436,39 +436,70 @@ describe('Editor Core', () => {
     editor.destroy();
   });
 
+  it('exec unlink removes the anchor element and preserves text', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><a href="https://example.com">link text</a></p>';
+    const a = container.querySelector('a')!;
+    const range = document.createRange();
+    range.setStart(a.firstChild!, 1);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    editor.exec('unlink');
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.textContent).toContain('link text');
+    editor.destroy();
+  });
+
   it('queryState with unknown command throws', () => {
     const editor = createEditor(container);
     expect(() => editor.queryState('nonexistent')).toThrow('Unknown editor command');
     editor.destroy();
   });
 
-  it('exec bold on selection calls execCommand', () => {
+  it('exec bold on selection wraps in <strong>', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>hello world</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
     editor.exec('bold');
-    expect(document.execCommand).toHaveBeenCalledWith('bold', false);
+    expect(container.querySelector('strong')).not.toBeNull();
+    expect(container.querySelector('strong')!.textContent).toBe('hello world');
     editor.destroy();
   });
 
-  it('exec italic on selection calls execCommand', () => {
+  it('exec italic on selection wraps in <em>', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>hello world</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
     editor.exec('italic');
-    expect(document.execCommand).toHaveBeenCalledWith('italic', false);
+    expect(container.querySelector('em')).not.toBeNull();
+    expect(container.querySelector('em')!.textContent).toBe('hello world');
     editor.destroy();
   });
 
-  it('exec underline on selection calls execCommand', () => {
+  it('exec underline on selection wraps in <u>', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>hello world</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
     editor.exec('underline');
-    expect(document.execCommand).toHaveBeenCalledWith('underline', false);
+    expect(container.querySelector('u')).not.toBeNull();
+    expect(container.querySelector('u')!.textContent).toBe('hello world');
     editor.destroy();
   });
 
@@ -515,33 +546,53 @@ describe('Editor Core', () => {
     editor.destroy();
   });
 
-  it('exec blockquote calls formatBlock', () => {
+  it('exec blockquote wraps block in <blockquote>', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>a quote</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 0);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
     editor.exec('blockquote');
-    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<blockquote>');
+    expect(container.querySelector('blockquote')).not.toBeNull();
+    expect(container.querySelector('blockquote')!.textContent).toBe('a quote');
     editor.destroy();
   });
 
-  it('exec unorderedList calls insertUnorderedList', () => {
+  it('exec unorderedList wraps block in <ul><li>', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>item</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 0);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
     editor.exec('unorderedList');
-    expect(document.execCommand).toHaveBeenCalledWith('insertUnorderedList', false);
+    expect(container.querySelector('ul')).not.toBeNull();
+    expect(container.querySelector('ul li')).not.toBeNull();
+    expect(container.querySelector('ul li')!.textContent).toBe('item');
     editor.destroy();
   });
 
-  it('exec orderedList calls insertOrderedList', () => {
+  it('exec orderedList wraps block in <ol><li>', () => {
     const editor = createEditor(container);
     container.innerHTML = '<p>item</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 0);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
     editor.exec('orderedList');
-    expect(document.execCommand).toHaveBeenCalledWith('insertOrderedList', false);
+    expect(container.querySelector('ol')).not.toBeNull();
+    expect(container.querySelector('ol li')).not.toBeNull();
+    expect(container.querySelector('ol li')!.textContent).toBe('item');
     editor.destroy();
   });
 
@@ -612,7 +663,7 @@ describe('Editor Core', () => {
     editor.destroy();
   });
 
-  it('orderedList exec inside a <ul> falls through to execCommand (different list type)', () => {
+  it('orderedList exec inside a <ul> converts it to <ol>', () => {
     const editor = createEditor(container);
     container.innerHTML = '<ul><li>item</li></ul>';
     const li = container.querySelector('li')!;
@@ -623,25 +674,45 @@ describe('Editor Core', () => {
     sel?.removeAllRanges();
     sel?.addRange(range);
 
-    const execSpy = vi.fn(() => true);
-    document.execCommand = execSpy;
     editor.exec('orderedList');
-    // Different list type — must fall through to execCommand
-    expect(execSpy).toHaveBeenCalledWith('insertOrderedList', false);
+    expect(container.querySelector('ul')).toBeNull();
+    expect(container.querySelector('ol')).not.toBeNull();
+    expect(container.querySelector('ol li')!.textContent).toBe('item');
     editor.destroy();
   });
 
-  it('exec heading with valid levels calls formatBlock', () => {
+  it('exec heading with valid levels wraps block in heading element', () => {
     const editor = createEditor(container);
+    const sel = document.getSelection();
+
     container.innerHTML = '<p>title</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    let target: Element = container.querySelector('p')!;
+    let r = document.createRange();
+    r.setStart(target.firstChild!, 0);
+    r.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(r);
     editor.exec('heading', '1');
-    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<h1>');
+    expect(container.querySelector('h1')?.textContent).toBe('title');
+
+    target = container.querySelector('h1')!;
+    r = document.createRange();
+    r.setStart(target.firstChild!, 0);
+    r.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(r);
     editor.exec('heading', '2');
-    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<h2>');
+    expect(container.querySelector('h2')?.textContent).toBe('title');
+
+    target = container.querySelector('h2')!;
+    r = document.createRange();
+    r.setStart(target.firstChild!, 0);
+    r.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(r);
     editor.exec('heading', '3');
-    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<h3>');
+    expect(container.querySelector('h3')?.textContent).toBe('title');
+
     editor.destroy();
   });
 
@@ -649,9 +720,10 @@ describe('Editor Core', () => {
     const editor = createEditor(container);
     container.innerHTML = '<h1>title</h1>';
     selectAll(container.querySelector('h1')!);
-    document.execCommand = vi.fn(() => true);
     editor.exec('heading', '1');
-    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<p>');
+    expect(container.querySelector('h1')).toBeNull();
+    expect(container.querySelector('p')).not.toBeNull();
+    expect(container.querySelector('p')!.textContent).toBe('title');
     editor.destroy();
   });
 
@@ -659,9 +731,10 @@ describe('Editor Core', () => {
     const editor = createEditor(container);
     container.innerHTML = '<h1>title</h1>';
     selectAll(container.querySelector('h1')!);
-    document.execCommand = vi.fn(() => true);
     editor.exec('heading', '2');
-    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<h2>');
+    expect(container.querySelector('h1')).toBeNull();
+    expect(container.querySelector('h2')).not.toBeNull();
+    expect(container.querySelector('h2')!.textContent).toBe('title');
     editor.destroy();
   });
 
@@ -669,9 +742,10 @@ describe('Editor Core', () => {
     const editor = createEditor(container);
     container.innerHTML = '<blockquote>a quote</blockquote>';
     selectAll(container.querySelector('blockquote')!);
-    document.execCommand = vi.fn(() => true);
     editor.exec('blockquote');
-    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, '<p>');
+    expect(container.querySelector('blockquote')).toBeNull();
+    expect(container.querySelector('p')).not.toBeNull();
+    expect(container.querySelector('p')!.textContent).toBe('a quote');
     editor.destroy();
   });
 
@@ -696,12 +770,17 @@ describe('Editor Core', () => {
     editor.on('error', (err) => errors.push(err));
 
     container.innerHTML = '<p>text</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
     editor.exec('link', 'https://example.com');
 
     expect(errors.length).toBe(0);
-    expect(document.execCommand).toHaveBeenCalledWith('createLink', false, 'https://example.com');
+    expect(container.querySelector('a')).not.toBeNull();
+    expect(container.querySelector('a')!.getAttribute('href')).toBe('https://example.com');
     editor.destroy();
   });
 
@@ -711,18 +790,22 @@ describe('Editor Core', () => {
     editor.on('error', (err) => errors.push(err));
 
     container.innerHTML = '<p>text</p>';
-    selectAll(container);
-    document.execCommand = vi.fn(() => true);
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
     editor.exec('link', 'mailto:test@example.com');
 
     expect(errors.length).toBe(0);
-    expect(document.execCommand).toHaveBeenCalledWith('createLink', false, 'mailto:test@example.com');
+    expect(container.querySelector('a')).not.toBeNull();
+    expect(container.querySelector('a')!.getAttribute('href')).toBe('mailto:test@example.com');
     editor.destroy();
   });
 
   it('formatting on empty container does not crash', () => {
     const editor = createEditor(container);
-    document.execCommand = vi.fn(() => true);
     // No content, no selection — just verify no throw
     editor.exec('bold');
     editor.exec('italic');
@@ -892,5 +975,132 @@ describe('Editor Core', () => {
     container.dispatchEvent(new Event('input', { bubbles: true }));
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('exec bold toggles off when selection is inside <strong>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><strong>bold text</strong></p>';
+    const strong = container.querySelector('strong')!;
+    const range = document.createRange();
+    range.selectNodeContents(strong);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    editor.exec('bold');
+    expect(container.querySelector('strong')).toBeNull();
+    expect(container.textContent).toContain('bold text');
+    editor.destroy();
+  });
+
+  it('exec italic toggles off when selection is inside <em>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><em>italic text</em></p>';
+    const em = container.querySelector('em')!;
+    const range = document.createRange();
+    range.selectNodeContents(em);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    editor.exec('italic');
+    expect(container.querySelector('em')).toBeNull();
+    expect(container.textContent).toContain('italic text');
+    editor.destroy();
+  });
+
+  it('exec underline toggles off when selection is inside <u>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p><u>underlined text</u></p>';
+    const u = container.querySelector('u')!;
+    const range = document.createRange();
+    range.selectNodeContents(u);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    editor.exec('underline');
+    expect(container.querySelector('u')).toBeNull();
+    expect(container.textContent).toContain('underlined text');
+    editor.destroy();
+  });
+
+  it('exec bold with collapsed cursor (no selection) does not modify DOM', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>hello</p>';
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 3);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    editor.exec('bold');
+    expect(container.querySelector('strong')).toBeNull();
+    expect(container.innerHTML).toBe('<p>hello</p>');
+    editor.destroy();
+  });
+
+  it('exec heading with no value defaults to level 1', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>title</p>';
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 0);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    editor.exec('heading');
+    expect(container.querySelector('h1')).not.toBeNull();
+    editor.destroy();
+  });
+
+  it('exec unorderedList when cursor in <ol> converts to <ul>', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<ol><li>item</li></ol>';
+    const li = container.querySelector('li')!;
+    const range = document.createRange();
+    range.setStart(li.firstChild!, 0);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    editor.exec('unorderedList');
+    expect(container.querySelector('ol')).toBeNull();
+    expect(container.querySelector('ul')).not.toBeNull();
+    expect(container.querySelector('ul li')!.textContent).toBe('item');
+    editor.destroy();
+  });
+
+  it('exec link with collapsed cursor inserts <a> with URL as text', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>text</p>';
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 4);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    editor.exec('link', 'https://example.com');
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('href')).toBe('https://example.com');
+    expect(a!.textContent).toBe('https://example.com');
+    editor.destroy();
+  });
+
+  it('exec unlink with no <a> ancestor is a no-op', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>no link here</p>';
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 0);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    const before = container.innerHTML;
+    editor.exec('unlink');
+    expect(container.innerHTML).toBe(before);
+    editor.destroy();
   });
 });

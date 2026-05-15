@@ -315,6 +315,114 @@ export function createEditor(
     return false;
   }
 
+  function toggleInline(tagName: string): void {
+    const sel = doc.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (range.collapsed) return;
+    const anchor = sel.anchorNode;
+    if (!anchor) return;
+
+    const upperTag = tagName.toUpperCase();
+    // Check both anchor and focus to handle backward (right-to-left) selections
+    const nodeInTag = hasAncestor(anchor, upperTag)
+      ? anchor
+      : (sel.focusNode && hasAncestor(sel.focusNode, upperTag) ? sel.focusNode : null);
+    if (nodeInTag) {
+      const wrapper = findAncestor(nodeInTag, upperTag);
+      if (!wrapper) return;
+      const parent = wrapper.parentNode;
+      if (!parent) return;
+      const firstChild = wrapper.firstChild;
+      const lastChild = wrapper.lastChild;
+      const frag = doc.createDocumentFragment();
+      while (wrapper.firstChild) frag.appendChild(wrapper.firstChild);
+      parent.replaceChild(frag, wrapper);
+      // Restore selection over the unwrapped content
+      if (firstChild) {
+        const newRange = doc.createRange();
+        newRange.setStartBefore(firstChild);
+        if (lastChild) newRange.setEndAfter(lastChild);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      }
+    } else {
+      const el = doc.createElement(tagName);
+      try {
+        range.surroundContents(el);
+      } catch {
+        el.appendChild(range.extractContents());
+        range.insertNode(el);
+      }
+      const newRange = doc.createRange();
+      newRange.selectNodeContents(el);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    }
+    emitChange();
+  }
+
+  function replaceBlock(anchor: Node, newTag: string): void {
+    let block: Node | null = anchor;
+    while (block && block !== element && block.parentNode !== element) {
+      block = block.parentNode;
+    }
+    if (!block || block === element) return;
+    const oldEl = block as Element;
+    const newEl = doc.createElement(newTag);
+    while (oldEl.firstChild) newEl.appendChild(oldEl.firstChild);
+    oldEl.parentNode!.replaceChild(newEl, oldEl);
+    const sel = doc.getSelection();
+    if (sel) {
+      const r = doc.createRange();
+      r.selectNodeContents(newEl);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+    emitChange();
+  }
+
+  function wrapInList(listTag: 'ul' | 'ol'): void {
+    const sel = doc.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const anchor = sel.anchorNode;
+    if (!anchor) return;
+    let block: Node | null = anchor;
+    while (block && block !== element && block.parentNode !== element) {
+      block = block.parentNode;
+    }
+    if (!block || block === element) return;
+    const list = doc.createElement(listTag);
+    const li = doc.createElement('li');
+    const blockEl = block as Element;
+    while (blockEl.firstChild) li.appendChild(blockEl.firstChild);
+    list.appendChild(li);
+    blockEl.parentNode!.replaceChild(list, blockEl);
+    const r = doc.createRange();
+    r.selectNodeContents(li);
+    r.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(r);
+    emitChange();
+  }
+
+  function convertList(existingList: Element, newTag: 'ul' | 'ol'): void {
+    const newList = doc.createElement(newTag);
+    const children = Array.from(existingList.children).filter(c => c.tagName === 'LI');
+    for (const li of children) newList.appendChild(li);
+    existingList.parentNode!.replaceChild(newList, existingList);
+    const sel = doc.getSelection();
+    if (sel) {
+      const r = doc.createRange();
+      r.selectNodeContents(newList);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+    emitChange();
+  }
+
   const pluginCtx: PluginContext = {
     element,
     doc,
@@ -344,13 +452,13 @@ export function createEditor(
 
       switch (command) {
         case 'bold':
-          doc.execCommand('bold', false);
+          toggleInline('strong');
           break;
         case 'italic':
-          doc.execCommand('italic', false);
+          toggleInline('em');
           break;
         case 'underline':
-          doc.execCommand('underline', false);
+          toggleInline('u');
           break;
         case 'heading': {
           const level = value ?? '1';
@@ -359,26 +467,48 @@ export function createEditor(
           }
           const tag = `H${level}`;
           const anchor = doc.getSelection()?.anchorNode;
-          if (anchor && editor.queryState('heading') && hasAncestor(anchor, tag)) {
-            doc.execCommand('formatBlock', false, '<p>');
+          if (!anchor) break;
+          if (editor.queryState('heading') && hasAncestor(anchor, tag)) {
+            replaceBlock(anchor, 'p');
           } else {
-            doc.execCommand('formatBlock', false, `<h${level}>`);
+            replaceBlock(anchor, `h${level}`);
           }
           break;
         }
-        case 'blockquote':
+        case 'blockquote': {
+          const anchor = doc.getSelection()?.anchorNode;
+          if (!anchor) break;
           if (editor.queryState('blockquote')) {
-            doc.execCommand('formatBlock', false, '<p>');
+            replaceBlock(anchor, 'p');
           } else {
-            doc.execCommand('formatBlock', false, '<blockquote>');
+            replaceBlock(anchor, 'blockquote');
           }
           break;
-        case 'unorderedList':
-          if (!unwrapList('UL')) doc.execCommand('insertUnorderedList', false);
+        }
+        case 'unorderedList': {
+          if (!unwrapList('UL')) {
+            const anchor = doc.getSelection()?.anchorNode;
+            const olEl = anchor ? findAncestor(anchor, 'OL') : null;
+            if (olEl) {
+              convertList(olEl, 'ul');
+            } else {
+              wrapInList('ul');
+            }
+          }
           break;
-        case 'orderedList':
-          if (!unwrapList('OL')) doc.execCommand('insertOrderedList', false);
+        }
+        case 'orderedList': {
+          if (!unwrapList('OL')) {
+            const anchor = doc.getSelection()?.anchorNode;
+            const ulEl = anchor ? findAncestor(anchor, 'UL') : null;
+            if (ulEl) {
+              convertList(ulEl, 'ol');
+            } else {
+              wrapInList('ol');
+            }
+          }
           break;
+        }
         case 'link': {
           if (!value) {
             throw new Error('Link command requires a URL value');
@@ -388,12 +518,59 @@ export function createEditor(
             emit('error', new Error(`Protocol not allowed: ${trimmed}`));
             return;
           }
-          doc.execCommand('createLink', false, trimmed);
+          const sel2 = doc.getSelection();
+          if (!sel2 || sel2.rangeCount === 0) break;
+          const linkRange = sel2.getRangeAt(0);
+          const a = doc.createElement('a');
+          a.href = trimmed;
+          if (linkRange.collapsed) {
+            a.textContent = trimmed;
+            linkRange.insertNode(a);
+            const newRange = doc.createRange();
+            newRange.setStartAfter(a);
+            newRange.collapse(true);
+            sel2.removeAllRanges();
+            sel2.addRange(newRange);
+          } else {
+            try {
+              linkRange.surroundContents(a);
+            } catch {
+              a.appendChild(linkRange.extractContents());
+              linkRange.insertNode(a);
+            }
+            const newRange = doc.createRange();
+            newRange.selectNodeContents(a);
+            sel2.removeAllRanges();
+            sel2.addRange(newRange);
+          }
+          emitChange();
           break;
         }
-        case 'unlink':
-          doc.execCommand('unlink', false);
+        case 'unlink': {
+          const anchor = doc.getSelection()?.anchorNode;
+          if (!anchor) break;
+          const aEl = findAncestor(anchor, 'A');
+          if (!aEl) break;
+          const parent = aEl.parentNode;
+          if (!parent) break;
+          const firstChild = aEl.firstChild;
+          const lastChild = aEl.lastChild;
+          const frag = doc.createDocumentFragment();
+          while (aEl.firstChild) frag.appendChild(aEl.firstChild);
+          parent.replaceChild(frag, aEl);
+          if (firstChild) {
+            const sel3 = doc.getSelection();
+            if (sel3) {
+              const newRange = doc.createRange();
+              newRange.setStartBefore(firstChild);
+              if (lastChild) newRange.setEndAfter(lastChild);
+              sel3.removeAllRanges();
+              sel3.addRange(newRange);
+            }
+          }
+          emitChange();
           break;
+        }
         case 'codeBlock': {
           const sel = doc.getSelection();
           if (!sel || sel.rangeCount === 0) break;

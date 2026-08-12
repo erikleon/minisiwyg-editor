@@ -879,6 +879,82 @@ describe('Editor Core', () => {
     editor.destroy();
   });
 
+  it.each([
+    ['b', 'strong'],
+    ['i', 'em'],
+    ['u', 'u'],
+  ])('Cmd+%s applies %s and blocks the browser default', (key, tag) => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>hello</p>';
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 0);
+    range.setEnd(p.firstChild!, 5);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    const event = new KeyboardEvent('keydown', {
+      key,
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    container.dispatchEvent(event);
+
+    // preventDefault matters as much as the tag: the browser default would
+    // insert <b>/<i>, which the policy strips.
+    expect(event.defaultPrevented).toBe(true);
+    expect(container.querySelector(tag)).not.toBeNull();
+    editor.destroy();
+  });
+
+  it('Ctrl+B works alongside Cmd+B for non-mac keyboards', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>hello</p>';
+    const p = container.querySelector('p')!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 0);
+    range.setEnd(p.firstChild!, 5);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    container.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'B', ctrlKey: true, bubbles: true, cancelable: true }),
+    );
+
+    expect(container.querySelector('strong')).not.toBeNull();
+    editor.destroy();
+  });
+
+  it('leaves unmapped and modified shortcuts to the browser', () => {
+    const editor = createEditor(container);
+    container.innerHTML = '<p>hello</p>';
+
+    // Cmd+S must still reach the page, and Cmd+Alt+B is not a format shortcut.
+    const save = new KeyboardEvent('keydown', {
+      key: 's',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    const altBold = new KeyboardEvent('keydown', {
+      key: 'b',
+      metaKey: true,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    container.dispatchEvent(save);
+    container.dispatchEvent(altBold);
+
+    expect(save.defaultPrevented).toBe(false);
+    expect(altBold.defaultPrevented).toBe(false);
+    expect(container.querySelector('strong')).toBeNull();
+    editor.destroy();
+  });
+
   it('Backspace at start of empty code block converts to paragraph', () => {
     const editor = createEditor(container);
     container.innerHTML = '<pre><code>\n</code></pre>';

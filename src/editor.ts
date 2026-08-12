@@ -30,6 +30,14 @@ const SUPPORTED_COMMANDS = new Set([
   'codeBlock',
 ]);
 
+// Keyboard shortcut key → command, matched against a lowercased event.key
+// while Cmd or Ctrl is held.
+const SHORTCUTS: Record<string, string> = {
+  b: 'bold',
+  i: 'italic',
+  u: 'underline',
+};
+
 /**
  * Create a contentEditable-based editor with built-in sanitization.
  *
@@ -205,6 +213,19 @@ export function createEditor(
 
   // Keydown handler for code block behavior
   function onKeydown(e: KeyboardEvent): void {
+    // Cmd/Ctrl + B, I, U. These must be intercepted, not just added as a
+    // convenience: left to itself the browser applies its own contenteditable
+    // formatting and produces <b>/<i>, which the policy does not allow, so the
+    // observer strips them again and the shortcut appears to do nothing.
+    if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+      const command = SHORTCUTS[(e.key || '').toLowerCase()];
+      if (command) {
+        e.preventDefault();
+        editor.exec(command);
+        return;
+      }
+    }
+
     const sel = doc.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const anchor = sel.anchorNode;

@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Plugin lifecycle and input hooks. A plugin can now define `setup(ctx)` (returning an optional teardown that `destroy()` runs), `onKeydown`, `onBeforeInput`, and `onPaste`. Each event hook returns `true` to claim the event, which suppresses both later plugins and the editor's built-in handling. This unblocks the features the previous plugin API could not express — markdown input rules, placeholder, bubble toolbar, paste-as-plain-text, and mentions.
+- `PluginContext.on(event, handler)` so a plugin can subscribe to `change`, matching the `emit` it already had.
+- New exported type `PluginTeardown`.
+
+### Changed
+- Total gzipped budget raised from 6kb to 7kb (full bundle now 6164 bytes; 7kb hard limit enforced in CI) to make room for the hooks without dropping the policy freeze. Marketing claim updated from "sub-6kb" to "sub-7kb" across README, demo, and package description.
+
+### Security
+- The sanitizer policy is deep-frozen once plugin registration finishes — tag map, per-tag attribute arrays, and protocol list. Plugin hooks run on every keystroke and paste, so without this a hook could widen the policy at runtime, after the sanitizer and MutationObserver had already been handed the object. Registration stays the only point where the policy can grow.
+- `onPaste` runs after sanitization and receives the cleaned `DocumentFragment`, never the raw clipboard HTML. A plugin can reshape or claim the insertion but cannot reintroduce stripped content.
+
 ## [v0.6.0] - 2026-08-12
 
 ### Changed

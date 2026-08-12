@@ -2,39 +2,30 @@
 
 ## The size budget shapes this list
 
-The full bundle is 6032 bytes gzipped against the 6144-byte limit that CI enforces. About 110 bytes of headroom. Nothing below fits in core without either raising the budget or moving something out.
+The full bundle is 6164 bytes gzipped against the 7168-byte limit that CI enforces — roughly 1000 bytes of headroom, after the budget was raised from 6kb to make room for the plugin hooks.
 
 So each item is tagged with where it has to live:
 
 - **[core]** — cannot be anything else. It wraps every mutation, or it must beat the browser's own contenteditable behavior.
-- **[plugin]** — buildable today against the v0.3.0 `Plugin` interface: policy delta, commands, toolbar actions.
-- **[plugin+api]** — a plugin in shape, but blocked on the plugin API gaining hooks. See "Plugin API v2" below.
+- **[plugin]** — buildable against the `Plugin` interface: policy delta, commands, toolbar actions, and the lifecycle and input hooks added on top of them.
+
+The old **[plugin+api]** tag is gone. Everything it marked is now buildable, since the hooks those items were waiting on exist.
 
 ## Blocking
 
-### Plugin API v2 — lifecycle and input hooks
+### Ship a real plugin to prove the API [plugin]
 **Priority:** P1
-**Blocks:** every [plugin+api] item below
 
-`Plugin` today is `{ name, policy, commands, actions }`. A plugin can add tags, register commands, and add buttons. It cannot see a keystroke, a paste, a selection change, or the editor's mount and teardown. That rules out the whole category of features people actually ask for — input rules, placeholder, bubble toolbar, mentions.
+The hooks exist and are tested, but nothing in the repo is built on them. Every plugin so far is a test fixture. Until something real is written against the interface, its ergonomics are unproven — the tests confirm the hooks fire, not that they are pleasant to build with.
 
-Proposed additions:
-
-- `setup(ctx)` returning an optional teardown function, called at `createEditor` time and unwound by `destroy()`.
-- `onKeydown(ctx, event)` and `onBeforeInput(ctx, event)`, returning `true` to signal handled and suppress the built-in path.
-- `onPaste(ctx, event, fragment)` running after sanitization, never before. The paste handler stays the security boundary; a plugin gets the already-clean fragment.
-- `ctx.on(event, handler)` so a plugin can subscribe to `change`, matching the `emit` it already has.
-
-Security note: hooks must not be able to widen the policy at runtime. Policy deltas stay merged once, at registration.
-
-Files: `src/types.ts`, `src/editor.ts`.
+Horizontal rule is the cheapest proof (policy delta plus an insert command). Markdown input rules are the most informative, since they exercise `onBeforeInput` and are the top-requested feature.
 
 ### Undo/redo [core]
 **Priority:** P1
 
 v0.4.0 replaced `execCommand` with direct Selection/Range DOM manipulation. Manual DOM mutation does not push onto the browser's native undo stack the way `execCommand` did, so Cmd+Z is inconsistent or dead across the built-in commands. Verify the real browser behavior first (Playwright, not happy-dom), then decide between a bounded history stack and `beforeinput`-driven native undo.
 
-Cost is the problem: a history stack is not a 110-byte feature. This likely forces the budget conversation.
+Cost is the problem, though less so than before: the 7kb budget leaves roughly 1000 bytes, which a bounded history stack may now fit inside.
 
 ## Toolbar
 
@@ -45,7 +36,7 @@ Fixed by switching to `aria-disabled` plus a click-guard. See Completed.
 
 ## Backlog
 
-### Markdown input rules [plugin+api]
+### Markdown input rules [plugin]
 **Priority:** P2
 
 `# ` → heading, `- ` → list, `` ` `` → inline code, `> ` → blockquote. The Notion-style behavior users now expect. Needs `onBeforeInput`.
@@ -55,7 +46,7 @@ Fixed by switching to `aria-disabled` plus a click-guard. See Completed.
 
 `src/toolbar.ts` calls `window.prompt('Enter URL')`. It blocks the page, looks dated, and cannot edit or remove an existing link's href. Replace with a small inline popover anchored to the selection. Protocol validation via `isProtocolAllowed` stays exactly as it is.
 
-### Placeholder text [plugin+api]
+### Placeholder text [plugin]
 **Priority:** P2
 
 Empty-state hint. Cheap in bytes as CSS (`:empty::before`), but needs a `setup` hook to attach and a mount-time class.
@@ -65,7 +56,7 @@ Empty-state hint. Cheap in bytes as CSS (`:empty::before`), but needs a `setup` 
 
 `s`/`del` are not in the default policy and neither has a command. `code` is already allowed by the policy but no command or toolbar button exposes it. Pure policy delta plus commands — a plugin can ship this today with no core change.
 
-### Images [plugin, partly plugin+api]
+### Images [plugin]
 **Priority:** P2
 
 Insert-by-URL is a plugin today: add `img` with `src`/`alt` to the policy, register an insert command. Paste and drag-drop upload need `onPaste`.
@@ -77,27 +68,27 @@ Security: `img` is the highest-risk tag to allow. `onerror` is already stripped 
 
 `hr` policy delta plus an insert command. Smallest real proof that the plugin API carries its weight.
 
-### Floating bubble toolbar [plugin+api]
+### Floating bubble toolbar [plugin]
 **Priority:** P3
 
 Toolbar that appears on selection. Needs `setup` and a selection-change subscription.
 
-### Word and character count [plugin+api]
+### Word and character count [plugin]
 **Priority:** P3
 
 `maxLength` already exists and the editor emits `overflow` when a paste would exceed it, so a live count has something real to hang off. Needs `ctx.on('change')`.
 
-### Paste as plain text [plugin+api]
+### Paste as plain text [plugin]
 **Priority:** P3
 
 Cmd+Shift+V. Needs `onPaste` and `onKeydown`.
 
-### Tables [plugin+api]
+### Tables [plugin]
 **Priority:** P4
 
 Insert is a plugin. Cell navigation, row/column operations, and Tab-between-cells all need `onKeydown`. Expensive in edge cases; the least certain item here.
 
-### Slash commands and @-mentions [plugin+api]
+### Slash commands and @-mentions [plugin]
 **Priority:** P4
 
 The natural showcase for the plugin API once hooks exist.
@@ -109,7 +100,7 @@ The natural showcase for the plugin API once hooks exist.
 
 ## Not planned
 
-**Collaborative editing.** CRDT or OT sync cannot be done inside a 6kb budget, and bolting on a sync engine contradicts the premise of the project. Consumers who need it should drive the editor from their own document model.
+**Collaborative editing.** CRDT or OT sync cannot be done inside a 7kb budget, and bolting on a sync engine contradicts the premise of the project. Consumers who need it should drive the editor from their own document model.
 
 ## Dependencies
 
@@ -136,6 +127,14 @@ In-range patches (`@playwright/test`, `vue`, `@types/react`, `vitest`) can be pi
 A dry-run job — `npm publish --dry-run` on a schedule, or against a PR — would cover most of the gap without publishing anything.
 
 ## Completed
+
+### Plugin API v2 — lifecycle and input hooks
+`Plugin` gained `setup(ctx)` (returning a teardown that `destroy()` runs), `onKeydown`, `onBeforeInput`, and `onPaste`, and `PluginContext` gained `on()` to match its `emit`. Each event hook returns `true` to claim the event, suppressing later plugins and the built-in path.
+
+`onPaste` deliberately runs after sanitization and receives the cleaned fragment, so the paste handler stays the security boundary. The policy is deep-frozen once registration finishes — hooks run on every keystroke, so without that a plugin could widen the policy after the sanitizer and observer already held the object.
+
+Cost 132 bytes (6032 → 6164), which did not fit the 6kb budget. Three trims were tried and none paid: a shared hook dispatcher was byte-neutral and cost argument type-checking, a shared listener table was 3 bytes worse, and dropping the freeze would have saved 24 by giving up a security property. Budget raised to 7kb instead, as v0.3.0 did for the original plugin API.
+**Completed:** unreleased (2026-08-12)
 
 ### `npm install -g npm@latest` removed from the publish job
 The publish job pinned a Node version and then installed whatever `npm@latest` resolved to, and the two drifted apart on npm's schedule rather than ours. It cost one failed release: `npm@latest` became npm@12, which requires Node `^22.22.2 || ^24.15.0 || >=26.0.0`, against a job pinned to Node 20 — `EBADENGINE` before it reached `npm publish`.

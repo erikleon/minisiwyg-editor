@@ -1,10 +1,10 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-// 6kb hard limit for the full bundle (index.js re-exports all four modules).
+// 7kb hard limit for the full bundle (index.js re-exports all four modules).
 // Subpath bundles are reported for visibility but each one is independently
 // bundled by esbuild, so summing them double-counts shared code.
-const FULL_BUDGET = 6144;
+const FULL_BUDGET = 7168;
 
 const entries = [
   { file: 'dist/index.js', label: 'full bundle', enforce: true },

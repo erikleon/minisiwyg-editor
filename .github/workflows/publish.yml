@@ -19,7 +19,7 @@ jobs:
       version: ${{ steps.tag.outputs.version }}
       created: ${{ steps.tag.outputs.created }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Read version and create tag
         id: tag
         run: |
@@ -71,7 +71,7 @@ jobs:
           else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.gate.outputs.should_publish == 'true'
         with:
           ref: ${{ steps.gate.outputs.version }}
@@ -88,11 +88,9 @@ jobs:
             echo "::error file=CHANGELOG.md::No release notes for $PUBLISH_VERSION. Add a '## [$PUBLISH_VERSION]' section before tagging."
             exit 1
           fi
-      # Must stay at or above what the npm version installed below supports.
-      # Publishing needs npm >= 11.5.1 for OIDC trusted publishing, which is
-      # newer than the npm any Node 20 runner bundles — so the global install
-      # is not optional, and the Node version has to keep up with it.
-      - uses: actions/setup-node@v4
+      # Node 24 bundles npm 11.12 or newer, which covers the 11.5.1 that OIDC
+      # trusted publishing needs — so no global npm install is required here.
+      - uses: actions/setup-node@v7
         if: steps.gate.outputs.should_publish == 'true'
         with:
           node-version: 24
@@ -103,7 +101,17 @@ jobs:
         env:
           PUBLISH_VERSION: ${{ steps.gate.outputs.version }}
         run: |
-          npm install -g npm@latest
+          # Assert the npm floor rather than assume it. setup-node resolves to
+          # whatever the latest 24.x happens to be, and the earliest 24.x shipped
+          # npm 11.3.0 — below what trusted publishing needs. Installing
+          # `npm@latest` instead is what broke the v0.5.0 release: a floating major
+          # eventually stopped supporting the pinned Node, and it only surfaced
+          # mid-release.
+          NPM_VERSION=$(npm --version)
+          if [ "$(printf '11.5.1\n%s\n' "$NPM_VERSION" | sort -V | head -1)" != "11.5.1" ]; then
+            echo "::error::npm $NPM_VERSION is below the 11.5.1 that OIDC trusted publishing needs. Raise node-version, or install a newer npm explicitly."
+            exit 1
+          fi
           npm ci
           PKG_VERSION=$(node -p "require('./package.json').version")
           TAG_VERSION="${PUBLISH_VERSION#v}"

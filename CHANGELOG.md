@@ -4,7 +4,11 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+- Cmd/Ctrl+B, Cmd/Ctrl+I, and Cmd/Ctrl+U now apply bold, italic, and underline through `editor.exec`. Any other modifier combination, including Alt, is left to the browser.
+
 ### Fixed
+- The three format shortcuts previously appeared to do nothing. Nothing in the editor handled them, so the browser's own contentEditable handling inserted `<b>`/`<i>` — tags the default policy does not allow — and the MutationObserver removed them again. The editor now calls `preventDefault` and produces `<strong>`/`<em>`/`<u>` to match the toolbar.
 - Toolbar buttons are now soft-disabled with `aria-disabled="true"` instead of the `disabled` property while view-source mode is active. A disabled button is skipped by sequential focus, so keyboard users tabbed straight out of the toolbar and could not reach the view-source button to leave the mode. The buttons stay focusable, and the click handler rejects their commands while the mode is on.
 
 ## [v0.4.0] - 2026-05-13

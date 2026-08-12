@@ -133,20 +133,19 @@ In-range patches (`@playwright/test`, `vue`, `@types/react`, `vitest`) can be pi
 
 The publish job pins a Node version and then installs whatever `npm@latest` resolves to. Those two drift apart on npm's schedule, not ours. It already cost one failed release: `npm@latest` became npm@12, which requires Node `^22.22.2 || ^24.15.0 || >=26.0.0`, and the job was pinned to Node 20, so it died at `EBADENGINE` before reaching `npm publish`. Moving the pin to 24 buys time; it does not fix the shape of the problem, and npm's next major will do this again.
 
-The install cannot simply be dropped — publishing uses OIDC trusted publishing, which needs npm >= 11.5.1, newer than any Node 20 runner bundles.
+Publishing uses OIDC trusted publishing, which needs npm >= 11.5.1 — newer than any Node 20 runner bundled, which is why the global install was there in the first place. That reason has now expired: everything runs on Node 24, which bundles npm 11.19.0, comfortably past the floor. So the line can most likely just go.
 
 What makes it expensive is the timing, not the failure itself. It only fires during a release, after the tag is already pushed, which means recovering means moving a tag rather than pushing a fix. Options, roughly in order of preference:
 
-- Run the same install-and-verify step in CI so the break surfaces on an ordinary push instead of mid-release.
-- Pin npm to a known-good major (`npm@12`) and bump it deliberately.
-- Derive the Node version from what the installed npm needs, rather than hardcoding both.
-
-### CI tests only Node 20 while publish runs Node 24
-**Priority:** P3
-
-`ci.yml` and `pages.yml` pin `node-version: 20`; `publish.yml` is now on 24. Node 20 is the right thing to test, since `engines.node` declares `">=20"` and CI is what verifies that floor — but nothing exercises the version the package is actually built and published on. A `[20, 24]` matrix in `ci.yml` covers both ends. Bump the `engines.node` floor only if 20 is genuinely dropped.
+- Drop `npm install -g npm@latest` and use the npm bundled with Node 24. Confirm the runner's bundled version first, since setup-node resolves to the latest 24.x rather than a fixed one.
+- Pin npm to a known-good major (`npm@11`) so it cannot jump a major on its own schedule.
+- Run the same install-and-verify step in CI so any future break surfaces on an ordinary push instead of mid-release.
 
 ## Completed
+
+### Node 20 dropped
+CI, Pages, and publish all run Node 24, and `engines.node` was raised from `>=20` to `>=24`. Node 20 could no longer run the release pipeline at all: `npm@latest` became npm@12, which refuses to install on it. This replaced the earlier plan of a `[20, 24]` CI matrix — with the floor raised to 24 there is no longer a lower version to test.
+**Completed:** v0.6.0 (2026-08-12)
 
 ### Cmd/Ctrl+B/I/U keyboard shortcuts
 `onKeydown` now intercepts the three format shortcuts and routes them through `editor.exec`. Before this, nothing handled them, so the browser's own contenteditable handling inserted `<b>`/`<i>` — tags the default policy does not allow — and the observer stripped them straight back out, making the shortcuts look dead.

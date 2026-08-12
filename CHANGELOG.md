@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Breaking:** `engines.node` raised from `>=20` to `>=24`. Installing on Node 20 now produces an `EBADENGINE` warning. Node 20 reached the end of its support window, and the release pipeline can no longer run on it — `npm@latest` is now npm@12, which refuses to install on Node 20 at all.
+- CI and Pages workflows moved from Node 20 to Node 24, matching the version the package is built and published on.
+
 ## [v0.5.0] - 2026-08-11
 
 ### Added

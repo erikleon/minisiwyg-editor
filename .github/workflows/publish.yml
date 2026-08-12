@@ -88,10 +88,14 @@ jobs:
             echo "::error file=CHANGELOG.md::No release notes for $PUBLISH_VERSION. Add a '## [$PUBLISH_VERSION]' section before tagging."
             exit 1
           fi
+      # Must stay at or above what the npm version installed below supports.
+      # Publishing needs npm >= 11.5.1 for OIDC trusted publishing, which is
+      # newer than the npm any Node 20 runner bundles — so the global install
+      # is not optional, and the Node version has to keep up with it.
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.should_publish == 'true'
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
       - name: Install and verify

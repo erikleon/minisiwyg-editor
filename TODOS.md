@@ -9,22 +9,35 @@ While `viewSource` is active, all other toolbar buttons get `disabled = true`, w
 
 Files: `src/toolbar.ts` (`toggleSourceMode`).
 
-## v2 — Post-v1 Release
+## Dependencies
 
-### ~~2. Selection/Range API migration~~ ✅ COMPLETED
-~~Replace execCommand with direct DOM manipulation via Selection/Range APIs. execCommand is deprecated. Browser vendors may reduce reliability. Selection/Range gives full control over output (no b/strong divergence).~~
-**Completed:** v0.4.0 (2026-05-13)
+### Dev-dependency upgrades available
+**Priority:** P3
 
-### 3. Framework adapters (React/Vue/Svelte)
-Official wrapper components for major frameworks. Each wrapper is ~20 lines: useEffect to call createEditor, return cleanup from destroy().
-**Depends on:** Stable v1 Editor interface.
+Majors held back on purpose or not yet evaluated:
 
-### 4. MutationObserver security model clarification
-MutationObserver fires AFTER DOM mutation. An `<img onerror=...>` executes before the observer strips it. Update documentation and marketing to position the paste handler as the primary security boundary and the observer as defense-in-depth. Say "XSS prevented at every entry point" not "architecturally impossible."
-**Depends on:** Day 10 documentation. Should be resolved before any public launch.
+- `typescript` 5.9 → 7.0
+- `vitest` 3.2 → 4.1
+- `happy-dom` 17.6 → 20.11
+- `esbuild` 0.25 → 0.28
+- `react` / `react-dom` / `@types/react*` 18 → 19. The `peerDependencies` range is already `>=18`, so this is a test-matrix decision, not a consumer-facing one.
+
+In-range patches (`@playwright/test`, `vue`, `@types/react`, `vitest`) can be picked up with `npm update` at any time.
 
 ## Completed
+
+### Framework adapters (React/Vue/Svelte)
+Official wrapper components shipped as subpath exports (`minisiwyg-editor/react`, `/vue`, `/svelte`). React and Vue are components; Svelte is a `use:minisiwyg` action so no Svelte compiler is required. Adapter HTML goes through `sanitizeToFragment` on mount and on controlled-mode reconcile.
+**Completed:** v0.2.0 (2026-04-10)
 
 ### Plugin system architecture
 Design and implement a lightweight plugin API. Plugins extend the policy (add new tags/attributes/protocols) and register new editor commands + toolbar actions. Exported new public types: `Plugin`, `PluginContext`, `PluginCommand`, `PluginAction`, `PluginPolicyDelta`.
 **Completed:** v0.3.0 (2026-04-14)
+
+### MutationObserver security model clarification
+README "Security Model" now names the paste handler as the primary boundary and the MutationObserver as defense-in-depth, instead of claiming XSS is architecturally impossible.
+**Completed:** v0.3.0 (2026-04-14)
+
+### Selection/Range API migration
+Replaced `execCommand` with direct DOM manipulation via the Selection/Range APIs. Removes the deprecated API and the divergent `<b>`/`<strong>` output across browsers.
+**Completed:** v0.4.0 (2026-05-13)

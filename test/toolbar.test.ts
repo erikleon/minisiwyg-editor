@@ -306,16 +306,32 @@ describe('createToolbar', () => {
     expect(srcBtn.getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('viewSource disables other buttons while active and re-enables on toggle off', () => {
+  it('viewSource soft-disables other buttons while active and re-enables on toggle off', () => {
     toolbar = createToolbar(editor);
     document.body.appendChild(toolbar.element);
     const srcBtn = toolbar.element.querySelector('.minisiwyg-btn-viewSource') as HTMLButtonElement;
     const boldBtn = toolbar.element.querySelector('.minisiwyg-btn-bold') as HTMLButtonElement;
     srcBtn.click();
-    expect(boldBtn.disabled).toBe(true);
-    expect(srcBtn.disabled).toBe(false);
+    expect(boldBtn.getAttribute('aria-disabled')).toBe('true');
+    expect(srcBtn.getAttribute('aria-disabled')).toBeNull();
     srcBtn.click();
+    expect(boldBtn.getAttribute('aria-disabled')).toBe('false');
+  });
+
+  it('soft-disabled buttons stay focusable and reject clicks in source mode', () => {
+    toolbar = createToolbar(editor);
+    document.body.appendChild(toolbar.element);
+    const srcBtn = toolbar.element.querySelector('.minisiwyg-btn-viewSource') as HTMLButtonElement;
+    const boldBtn = toolbar.element.querySelector('.minisiwyg-btn-bold') as HTMLButtonElement;
+    srcBtn.click();
+
+    // The disabled property is what removes a button from Tab order, so it
+    // must stay false for keyboard users to reach the view-source button.
     expect(boldBtn.disabled).toBe(false);
+
+    const before = editor.getHTML();
+    boldBtn.click();
+    expect(editor.getHTML()).toBe(before);
   });
 
   it('destroy cleans up source <pre> and restores editor display', () => {

@@ -130,6 +130,9 @@ export function createToolbar(
   let savedDisplay = '';
 
   function onButtonClick(action: string): void {
+    // View-source mode soft-disables the other buttons. They stay focusable
+    // (see toggleSourceMode), so the click has to be rejected here.
+    if (sourceEl && action !== 'viewSource') return;
     try {
       if (action === 'viewSource') {
         toggleSourceMode();
@@ -166,7 +169,10 @@ export function createToolbar(
         buttons[i].setAttribute('aria-pressed', String(active));
         buttons[i].classList.toggle('minisiwyg-btn-active', active);
       } else {
-        buttons[i].disabled = active;
+        // aria-disabled instead of the disabled property: a disabled button is
+        // skipped by sequential focus, which would drop keyboard users out of
+        // the toolbar and leave them unable to reach the view-source button.
+        buttons[i].setAttribute('aria-disabled', String(active));
       }
     }
   }

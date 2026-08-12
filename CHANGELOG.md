@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Toolbar buttons are now soft-disabled with `aria-disabled="true"` instead of the `disabled` property while view-source mode is active. A disabled button is skipped by sequential focus, so keyboard users tabbed straight out of the toolbar and could not reach the view-source button to leave the mode. The buttons stay focusable, and the click handler rejects their commands while the mode is on.
+
 ## [v0.4.0] - 2026-05-13
 
 ### Changed

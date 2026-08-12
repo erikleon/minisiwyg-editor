@@ -126,17 +126,39 @@ Majors held back on purpose or not yet evaluated:
 
 In-range patches (`@playwright/test`, `vue`, `@types/react`, `vitest`) can be picked up with `npm update` at any time.
 
-Also: the CI workflows pin `node-version: 20`, and GitHub now warns that Node 20 actions are forced onto Node 24. Bump the workflows and the `engines.node` floor together.
+## Release pipeline
+
+### `npm install -g npm@latest` will break the release again
+**Priority:** P2
+
+The publish job pins a Node version and then installs whatever `npm@latest` resolves to. Those two drift apart on npm's schedule, not ours. It already cost one failed release: `npm@latest` became npm@12, which requires Node `^22.22.2 || ^24.15.0 || >=26.0.0`, and the job was pinned to Node 20, so it died at `EBADENGINE` before reaching `npm publish`. Moving the pin to 24 buys time; it does not fix the shape of the problem, and npm's next major will do this again.
+
+The install cannot simply be dropped — publishing uses OIDC trusted publishing, which needs npm >= 11.5.1, newer than any Node 20 runner bundles.
+
+What makes it expensive is the timing, not the failure itself. It only fires during a release, after the tag is already pushed, which means recovering means moving a tag rather than pushing a fix. Options, roughly in order of preference:
+
+- Run the same install-and-verify step in CI so the break surfaces on an ordinary push instead of mid-release.
+- Pin npm to a known-good major (`npm@12`) and bump it deliberately.
+- Derive the Node version from what the installed npm needs, rather than hardcoding both.
+
+### CI tests only Node 20 while publish runs Node 24
+**Priority:** P3
+
+`ci.yml` and `pages.yml` pin `node-version: 20`; `publish.yml` is now on 24. Node 20 is the right thing to test, since `engines.node` declares `">=20"` and CI is what verifies that floor — but nothing exercises the version the package is actually built and published on. A `[20, 24]` matrix in `ci.yml` covers both ends. Bump the `engines.node` floor only if 20 is genuinely dropped.
 
 ## Completed
 
 ### Cmd/Ctrl+B/I/U keyboard shortcuts
 `onKeydown` now intercepts the three format shortcuts and routes them through `editor.exec`. Before this, nothing handled them, so the browser's own contenteditable handling inserted `<b>`/`<i>` — tags the default policy does not allow — and the observer stripped them straight back out, making the shortcuts look dead.
-**Completed:** unreleased (2026-08-11)
+**Completed:** v0.5.0 (2026-08-11)
 
 ### [A11y] Toolbar tab order during view-source mode
 Buttons are soft-disabled with `aria-disabled="true"` instead of the `disabled` property, so they keep their place in sequential focus order and keyboard users can still reach the view-source button to leave the mode. `onButtonClick` rejects their commands while the mode is active.
-**Completed:** unreleased (2026-08-11)
+**Completed:** v0.5.0 (2026-08-11)
+
+### Release fails when changelog notes are missing
+The publish workflow reads release notes from the CHANGELOG.md section matching the version. An `## [Unreleased]` heading does not match, and `gh release create --notes-file -` accepts empty input without complaint, so a forgotten rename would publish to npm and cut a release with no notes. Both `create-tag` and the publish job now check for notes ahead of `npm publish`, so a mistake leaves no tag and no package.
+**Completed:** v0.5.0 (2026-08-11)
 
 ### Framework adapters (React/Vue/Svelte)
 Official wrapper components shipped as subpath exports (`minisiwyg-editor/react`, `/vue`, `/svelte`). React and Vue are components; Svelte is a `use:minisiwyg` action so no Svelte compiler is required. Adapter HTML goes through `sanitizeToFragment` on mount and on controlled-mode reconcile.

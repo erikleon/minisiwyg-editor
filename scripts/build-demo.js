@@ -112,6 +112,7 @@ const clean = sanitize(dirty, DEFAULT_POLICY);
 <footer>
   This entire editor is <strong>${distSize} bytes</strong> gzipped (full ESM bundle, all 4 modules).
   <br>Source: <a href="https://github.com/erikleon/minisiwyg-editor">github.com/erikleon/minisiwyg-editor</a>
+  <br>Built by Erik Karwatowski. MIT licensed.
 </footer>
 
 <script>

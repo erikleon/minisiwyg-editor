@@ -5,6 +5,7 @@ import type {
   Plugin,
   PluginCommand,
   PluginContext,
+  PluginTeardown,
 } from './types';
 import { DEFAULT_POLICY } from './defaults';
 import { sanitizeToFragment } from './sanitize';
@@ -96,7 +97,17 @@ export function createEditor(
     }
   }
 
+  // Registration is the only point where the policy widens. Freeze it before any
+  // plugin code can run, so a hook cannot bolt a tag or protocol on later — the
+  // sanitizer and the observer both read this object on every mutation.
+  for (const attrs of Object.values(policy.tags)) Object.freeze(attrs);
+  Object.freeze(policy.tags);
+  Object.freeze(policy.protocols);
+  Object.freeze(policy);
+
+  const teardowns: PluginTeardown[] = [];
   const handlers: Record<string, EventHandler[]> = {};
+
   const doc = element.ownerDocument;
 
   function emit(event: EditorEvent, ...args: unknown[]): void {
@@ -173,6 +184,13 @@ export function createEditor(
     // to avoid the serialize→reparse mXSS vector
     const fragment = sanitizeToFragment(html, policy);
 
+    // Plugins see the fragment only after it is policy-clean, never the raw
+    // clipboard HTML. A plugin can reshape it or claim the insertion outright,
+    // but it cannot reintroduce anything the sanitizer removed.
+    for (const plugin of plugins) {
+      if (plugin.onPaste?.(pluginCtx, e, fragment)) return;
+    }
+
     // Insert via Selection/Range API (NOT execCommand('insertHTML'))
     const selection = doc.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -213,6 +231,12 @@ export function createEditor(
 
   // Keydown handler for code block behavior
   function onKeydown(e: KeyboardEvent): void {
+    // Plugins see the key first and can claim it, which is the only way an input
+    // rule or a shortcut can beat the built-in handling below.
+    for (const plugin of plugins) {
+      if (plugin.onKeydown?.(pluginCtx, e)) return;
+    }
+
     // Cmd/Ctrl + B, I, U. These must be intercepted, not just added as a
     // convenience: left to itself the browser applies its own contenteditable
     // formatting and produces <b>/<i>, which the policy does not allow, so the
@@ -267,9 +291,18 @@ export function createEditor(
     }
   }
 
+  // beforeinput is where input rules belong: it fires before the character lands,
+  // so a plugin can replace "# " with a heading without the text flashing first.
+  function onBeforeInput(e: InputEvent): void {
+    for (const plugin of plugins) {
+      if (plugin.onBeforeInput?.(pluginCtx, e)) return;
+    }
+  }
+
   element.addEventListener('keydown', onKeydown);
   element.addEventListener('paste', onPaste);
   element.addEventListener('input', onInput);
+  element.addEventListener('beforeinput', onBeforeInput as EventListener);
 
   function findAncestor(node: Node, tagName: string): Element | null {
     let current: Node | null = node;
@@ -454,6 +487,10 @@ export function createEditor(
       } else {
         emit(event as EditorEvent, ...args);
       }
+    },
+    on(event: string, handler: EventHandler): void {
+      if (!handlers[event]) handlers[event] = [];
+      handlers[event].push(handler);
     },
   };
 
@@ -684,9 +721,12 @@ export function createEditor(
     },
 
     destroy(): void {
+      for (const teardown of teardowns) teardown();
+      teardowns.length = 0;
       element.removeEventListener('keydown', onKeydown);
       element.removeEventListener('paste', onPaste);
       element.removeEventListener('input', onInput);
+      element.removeEventListener('beforeinput', onBeforeInput as EventListener);
       enforcer.destroy();
       element.contentEditable = 'false';
     },
@@ -698,6 +738,12 @@ export function createEditor(
 
     element,
   };
+
+  // Last, so setup() sees a fully wired editor and can register handlers.
+  for (const plugin of plugins) {
+    const teardown = plugin.setup?.(pluginCtx);
+    if (teardown) teardowns.push(teardown);
+  }
 
   return editor;
 }

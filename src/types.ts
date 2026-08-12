@@ -40,9 +40,14 @@ export interface ToolbarOptions {
 export interface PluginContext {
   readonly element: HTMLElement;
   readonly doc: Document;
+  /** Frozen after registration — plugins cannot widen the policy at runtime. */
   readonly policy: SanitizePolicy;
   emit(event: string, ...args: unknown[]): void;
+  on(event: string, handler: (...args: unknown[]) => void): void;
 }
+
+/** Returned from `setup` to undo whatever it attached. Run by `destroy()`. */
+export type PluginTeardown = () => void;
 
 export interface PluginCommand {
   exec(ctx: PluginContext, value?: string): void;
@@ -64,6 +69,21 @@ export interface Plugin {
   policy?: PluginPolicyDelta;
   commands?: Record<string, PluginCommand>;
   actions?: Record<string, PluginAction>;
+  /** Runs once at `createEditor`. Return a teardown and `destroy()` will call it. */
+  setup?(ctx: PluginContext): PluginTeardown | void;
+  /** Return true to mark the key handled and skip the built-in handling. */
+  onKeydown?(ctx: PluginContext, event: KeyboardEvent): boolean | void;
+  /** Return true to mark the input handled and let nothing else act on it. */
+  onBeforeInput?(ctx: PluginContext, event: InputEvent): boolean | void;
+  /**
+   * Runs after the paste has been sanitized, so `fragment` is already policy-clean.
+   * Return true to take over insertion entirely.
+   */
+  onPaste?(
+    ctx: PluginContext,
+    event: ClipboardEvent,
+    fragment: DocumentFragment,
+  ): boolean | void;
 }
 
 export interface Toolbar {

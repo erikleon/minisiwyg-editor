@@ -1,6 +1,6 @@
 # minisiwyg-editor
 
-A sub-6kb gzipped, zero-dependency WYSIWYG editor with built-in XSS protection.
+A sub-7kb gzipped, zero-dependency WYSIWYG editor with built-in XSS protection.
 
 Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k stars, abandoned with known XSS vulnerabilities). minisiwyg-editor treats security as architecture, not an afterthought. The sanitizer is built into the editor via a declarative policy engine, not bolted on as a dependency.
 
@@ -8,11 +8,11 @@ Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k s
 
 Try it in your browser: **[erikleon.github.io/minisiwyg-editor](https://erikleon.github.io/minisiwyg-editor/)**
 
-The demo runs the full editor + toolbar in <6kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
+The demo runs the full editor + toolbar in <7kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
 
 ## Features
 
-- **Tiny.** <6kb gzipped total. 6kb hard limit enforced in CI.
+- **Tiny.** <7kb gzipped total. 7kb hard limit enforced in CI.
 - **Zero runtime dependencies.** Nothing to audit, nothing to break.
 - **XSS protection at every entry point.** Whitelist-based HTML sanitizer blocks `javascript:`, `data:`, event handlers, and encoded bypass attempts. Tested against OWASP XSS cheat sheet vectors.
 - **Declarative policy.** JSON-serializable rules define allowed tags, attributes, protocols, depth, and length. Store policies in a database, transmit them over the wire, validate them with a schema.
@@ -305,15 +305,35 @@ interface Plugin {
     label: string;
     icon?: string;                    // raw inner-SVG markup
   }>;
+
+  // Lifecycle and input hooks. Each hook that returns true claims the event,
+  // so no later plugin and no built-in handling runs for it.
+  setup?(ctx: PluginContext): (() => void) | void;   // teardown runs on destroy()
+  onKeydown?(ctx: PluginContext, e: KeyboardEvent): boolean | void;
+  onBeforeInput?(ctx: PluginContext, e: InputEvent): boolean | void;
+  onPaste?(                           // fragment is already sanitized
+    ctx: PluginContext,
+    e: ClipboardEvent,
+    fragment: DocumentFragment,
+  ): boolean | void;
 }
 
 interface PluginContext {
   readonly element: HTMLElement;      // editor root
   readonly doc: Document;
-  readonly policy: SanitizePolicy;    // merged, post-plugin
+  readonly policy: SanitizePolicy;    // merged, post-plugin, frozen
   emit(event: string, ...args: unknown[]): void;
+  on(event: string, handler: (...args: unknown[]) => void): void;
 }
 ```
+
+### Hooks
+
+`setup` runs once, after the editor is fully wired, and whatever it returns is called by `destroy()`. Use it to attach listeners or subscribe with `ctx.on('change', ...)`.
+
+`onKeydown` and `onBeforeInput` run before the editor's own handling. Return `true` to claim the event — that is how an input rule replaces `# ` with a heading, or a plugin overrides a built-in shortcut. `onBeforeInput` fires before the character lands, so the text never flashes on screen first.
+
+`onPaste` runs **after** sanitization. The `fragment` is already policy-clean, so a plugin can reshape it or return `true` to take over insertion, but it can never see the raw clipboard HTML or reintroduce what the sanitizer removed. The paste handler stays the security boundary.
 
 ### Safety rules
 
@@ -323,6 +343,8 @@ Plugin inputs go through the same enforcement as built-in config:
 - Plugin tag keys must be lowercase. `{ tags: { MARK: [] } }` throws at `createEditor` time.
 - Duplicate command names throw at registration — whether across plugins or colliding with a built-in (`bold`, `italic`, `link`, etc.).
 - Plugin policy deltas are merged before the MutationObserver and paste handler see the policy, so plugin-added tags go through the same whitelist.
+- The policy is frozen once registration finishes. A hook cannot add a tag, an attribute, or a protocol at runtime — `ctx.policy` is read-only in practice, not just by type.
+- `onPaste` receives the sanitized fragment, never the raw clipboard HTML, so a plugin cannot reintroduce what the sanitizer stripped.
 
 ## Security Model
 
@@ -359,7 +381,7 @@ npm install              # install dev dependencies
 npm run build            # esbuild: ESM + CJS output + type declarations
 npm test                 # vitest with happy-dom
 npx playwright test      # OWASP XSS vectors in real browsers
-npm run size-check       # fails if total gzipped > 6kb
+npm run size-check       # fails if total gzipped > 7kb
 npm run typecheck        # TypeScript type checking
 ```
 

@@ -128,20 +128,20 @@ In-range patches (`@playwright/test`, `vue`, `@types/react`, `vitest`) can be pi
 
 ## Release pipeline
 
-### `npm install -g npm@latest` will break the release again
-**Priority:** P2
+### Publish paths are only exercised during a release
+**Priority:** P3
 
-The publish job pins a Node version and then installs whatever `npm@latest` resolves to. Those two drift apart on npm's schedule, not ours. It already cost one failed release: `npm@latest` became npm@12, which requires Node `^22.22.2 || ^24.15.0 || >=26.0.0`, and the job was pinned to Node 20, so it died at `EBADENGINE` before reaching `npm publish`. Moving the pin to 24 buys time; it does not fix the shape of the problem, and npm's next major will do this again.
+`ci.yml` covers checkout, setup-node, tests and build, so most of the publish job is proven on every PR. What is not: `registry-url`, OIDC trusted publishing, `npm publish --provenance`, and the release-notes extraction. Those run for the first time during an actual release, which is the worst moment to learn something moved.
 
-Publishing uses OIDC trusted publishing, which needs npm >= 11.5.1 — newer than any Node 20 runner bundled, which is why the global install was there in the first place. That reason has now expired: everything runs on Node 24, which bundles npm 11.19.0, comfortably past the floor. So the line can most likely just go.
-
-What makes it expensive is the timing, not the failure itself. It only fires during a release, after the tag is already pushed, which means recovering means moving a tag rather than pushing a fix. Options, roughly in order of preference:
-
-- Drop `npm install -g npm@latest` and use the npm bundled with Node 24. Confirm the runner's bundled version first, since setup-node resolves to the latest 24.x rather than a fixed one.
-- Pin npm to a known-good major (`npm@11`) so it cannot jump a major on its own schedule.
-- Run the same install-and-verify step in CI so any future break surfaces on an ordinary push instead of mid-release.
+A dry-run job — `npm publish --dry-run` on a schedule, or against a PR — would cover most of the gap without publishing anything.
 
 ## Completed
+
+### `npm install -g npm@latest` removed from the publish job
+The publish job pinned a Node version and then installed whatever `npm@latest` resolved to, and the two drifted apart on npm's schedule rather than ours. It cost one failed release: `npm@latest` became npm@12, which requires Node `^22.22.2 || ^24.15.0 || >=26.0.0`, against a job pinned to Node 20 — `EBADENGINE` before it reached `npm publish`.
+
+The install existed because OIDC trusted publishing needs npm >= 11.5.1 and no Node 20 runner bundled that. On Node 24 the bundled npm is 11.12 or newer, so the install is gone. The job now asserts the 11.5.1 floor instead, because `setup-node` resolves to whatever the latest 24.x happens to be and the earliest 24.x shipped npm 11.3.0 — below the floor.
+**Completed:** 2026-08-12
 
 ### Node 20 dropped
 CI, Pages, and publish all run Node 24, and `engines.node` was raised from `>=20` to `>=24`. Node 20 could no longer run the release pipeline at all: `npm@latest` became npm@12, which refuses to install on it. This replaced the earlier plan of a `[20, 24]` CI matrix — with the floor raised to 24 there is no longer a lower version to test.

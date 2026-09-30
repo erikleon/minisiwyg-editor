@@ -117,6 +117,9 @@ export function createToolbar(
     // Only first button is in tab order; rest use arrow keys
     btn.tabIndex = buttons.length === 0 ? 0 : -1;
 
+    // Keep focus in the editor on a mouse click, so typing continues there
+    // (and a format turned on at the caret applies to it).
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => onButtonClick(action));
 
     container.appendChild(btn);

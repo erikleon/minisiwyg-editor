@@ -4,7 +4,12 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+- The size limit enforced in CI is now 6400 bytes gzipped (it was 6144), to make room for formatting at a collapsed caret. The README now says "about 6kb" instead of "sub-6kb".
+- Toolbar buttons no longer take focus on a mouse click, so typing continues in the editor after a click.
+
 ### Fixed
+- Bold, italic, and underline now work with a plain caret and no selection. The format applies to the next typed text, as in most editors, and the toolbar button shows `aria-pressed="true"` until then. Moving the caret first cancels it. Before, the command did nothing, so "click **B**, then type" gave plain text ([#32](https://github.com/erikleon/minisiwyg-editor/issues/32)).
 - `createEditor` no longer throws for an element that has no parent node. The check's message said the element had to be "attached to the DOM", but the check only looked for a parent, and nothing in the editor needs one. An element can now be created detached and mounted later ([#33](https://github.com/erikleon/minisiwyg-editor/issues/33)).
 
 ## [v0.6.0] - 2026-08-12

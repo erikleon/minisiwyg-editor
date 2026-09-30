@@ -260,6 +260,89 @@ describe('Editor Core', () => {
     }).toThrow('createEditor requires an HTMLElement');
   });
 
+  describe('formatting at a collapsed caret', () => {
+    function caretAtEnd(node: Node): void {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      range.collapse(false);
+      const sel = window.getSelection()!;
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    function type(data: string, inputType = 'insertText'): boolean {
+      const event = new InputEvent('beforeinput', { inputType, data, cancelable: true, bubbles: true });
+      container.dispatchEvent(event);
+      return event.defaultPrevented;
+    }
+
+    it('applies a pending format to the next typed text', () => {
+      container.innerHTML = '<p>a</p>';
+      const editor = createEditor(container);
+      const onChange = vi.fn();
+      editor.on('change', onChange);
+      caretAtEnd(container.querySelector('p')!.firstChild!);
+      editor.exec('bold');
+      editor.exec('italic');
+      expect(editor.queryState('bold')).toBe(true);
+      expect(editor.queryState('italic')).toBe(true);
+      expect(editor.queryState('underline')).toBe(false);
+      expect(type('b')).toBe(true);
+      expect(editor.getHTML()).toBe('<p>a<em><strong>b</strong></em></p>');
+      expect(onChange).toHaveBeenCalled();
+      // Consumed: the caret is now inside the new elements.
+      expect(type('c')).toBe(false);
+      editor.destroy();
+    });
+
+    it('toggles a pending format back off', () => {
+      container.innerHTML = '<p>a</p>';
+      const editor = createEditor(container);
+      caretAtEnd(container.querySelector('p')!.firstChild!);
+      editor.exec('underline');
+      expect(editor.queryState('underline')).toBe(true);
+      editor.exec('underline');
+      expect(editor.queryState('underline')).toBe(false);
+      expect(type('b')).toBe(false);
+      editor.destroy();
+    });
+
+    it('drops the pending format when the caret moves', () => {
+      container.innerHTML = '<p>ab</p>';
+      const editor = createEditor(container);
+      const text = container.querySelector('p')!.firstChild!;
+      caretAtEnd(text);
+      editor.exec('bold');
+      const range = document.createRange();
+      range.setStart(text, 1);
+      window.getSelection()!.removeAllRanges();
+      window.getSelection()!.addRange(range);
+      expect(editor.queryState('bold')).toBe(false);
+      expect(type('x')).toBe(false);
+      editor.destroy();
+    });
+
+    it('ignores input that is not typed text, and keeps no pending format after it', () => {
+      container.innerHTML = '<p>a</p>';
+      const editor = createEditor(container);
+      caretAtEnd(container.querySelector('p')!.firstChild!);
+      editor.exec('bold');
+      expect(type('', 'deleteContentBackward')).toBe(false);
+      expect(editor.queryState('bold')).toBe(false);
+      editor.destroy();
+    });
+
+    it('does nothing inside the format already', () => {
+      container.innerHTML = '<p><strong>a</strong></p>';
+      const editor = createEditor(container);
+      caretAtEnd(container.querySelector('strong')!.firstChild!);
+      editor.exec('bold');
+      expect(editor.getHTML()).toBe('<p><strong>a</strong></p>');
+      expect(type('b')).toBe(false);
+      editor.destroy();
+    });
+  });
+
   it('createEditor accepts an element that is not in the page yet', () => {
     const detached = document.createElement('div');
     const editor = createEditor(detached);

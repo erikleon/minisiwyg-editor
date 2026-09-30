@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.7.0] - 2026-09-30
 
 ### Changed
 - The size limit enforced in CI is now 6400 bytes gzipped (it was 6144), to make room for formatting at a collapsed caret. The README now says "about 6kb" instead of "sub-6kb".

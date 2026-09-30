@@ -64,6 +64,14 @@ describe('createToolbar', () => {
     expect(editor.exec).toHaveBeenCalledWith('underline');
   });
 
+  it('a mouse press on a button does not take focus from the editor', () => {
+    toolbar = createToolbar(editor);
+    const boldBtn = toolbar.element.querySelector('.minisiwyg-btn-bold') as HTMLButtonElement;
+    const press = new MouseEvent('mousedown', { cancelable: true, bubbles: true });
+    boldBtn.dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+  });
+
   it('click on bold button calls editor.exec("bold")', () => {
     toolbar = createToolbar(editor);
     const boldBtn = toolbar.element.querySelector('.minisiwyg-btn-bold') as HTMLButtonElement;

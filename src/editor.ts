@@ -52,9 +52,6 @@ export function createEditor(
   if (!element) {
     throw new TypeError('createEditor requires an HTMLElement');
   }
-  if (!element.ownerDocument || !element.parentNode) {
-    throw new TypeError('createEditor requires an element attached to the DOM');
-  }
 
   const src = options?.policy ?? DEFAULT_POLICY;
   const policy: SanitizePolicy = {
@@ -211,6 +208,33 @@ export function createEditor(
     emitChange();
   }
 
+  // Bold/italic/underline turned on at a collapsed caret. They apply to the
+  // next typed text, and are dropped as soon as the caret moves.
+  let pending: string[] = [];
+  let pendingAt: Range | undefined;
+
+  function pendingHere(range: Range): string[] {
+    return pendingAt && range.collapsed && !range.compareBoundaryPoints(0, pendingAt) ? pending : [];
+  }
+
+  function onBeforeInput(e: InputEvent): void {
+    const range = doc.getSelection()?.getRangeAt(0);
+    const tags = range && e.inputType === 'insertText' && e.data ? pendingHere(range) : [];
+    pending = [];
+    if (!tags.length) return;
+    e.preventDefault();
+    const text = doc.createTextNode(e.data!);
+    let node: Node = text;
+    for (const tag of tags) {
+      const el = doc.createElement(tag);
+      el.append(node);
+      node = el;
+    }
+    range!.insertNode(node);
+    range!.setStart(text, 1);
+    emitChange();
+  }
+
   // Keydown handler for code block behavior
   function onKeydown(e: KeyboardEvent): void {
     // Cmd/Ctrl + B, I, U. These must be intercepted, not just added as a
@@ -270,6 +294,7 @@ export function createEditor(
   element.addEventListener('keydown', onKeydown);
   element.addEventListener('paste', onPaste);
   element.addEventListener('input', onInput);
+  element.addEventListener('beforeinput', onBeforeInput);
 
   function findAncestor(node: Node, tagName: string): Element | null {
     let current: Node | null = node;
@@ -340,11 +365,18 @@ export function createEditor(
     const sel = doc.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const range = sel.getRangeAt(0);
-    if (range.collapsed) return;
     const anchor = sel.anchorNode;
     if (!anchor) return;
 
     const upperTag = tagName.toUpperCase();
+    if (range.collapsed) {
+      // Inside the format already, typing continues in it: nothing to do.
+      if (hasAncestor(anchor, upperTag)) return;
+      const p = pendingHere(range);
+      pending = p.includes(tagName) ? p.filter((t) => t !== tagName) : [...p, tagName];
+      pendingAt = range.cloneRange();
+      return;
+    }
     // Check both anchor and focus to handle backward (right-to-left) selections
     const nodeInTag = hasAncestor(anchor, upperTag)
       ? anchor
@@ -649,13 +681,14 @@ export function createEditor(
       const node = sel.anchorNode;
       if (!node || !element.contains(node)) return false;
 
+      const flip = pendingHere(sel.getRangeAt(0));
       switch (command) {
         case 'bold':
-          return hasAncestor(node, 'STRONG') || hasAncestor(node, 'B');
+          return hasAncestor(node, 'STRONG') || hasAncestor(node, 'B') || flip.includes('strong');
         case 'italic':
-          return hasAncestor(node, 'EM') || hasAncestor(node, 'I');
+          return hasAncestor(node, 'EM') || hasAncestor(node, 'I') || flip.includes('em');
         case 'underline':
-          return hasAncestor(node, 'U');
+          return hasAncestor(node, 'U') || flip.includes('u');
         case 'heading':
           return hasAncestor(node, 'H1') || hasAncestor(node, 'H2') || hasAncestor(node, 'H3');
         case 'blockquote':
@@ -687,6 +720,7 @@ export function createEditor(
       element.removeEventListener('keydown', onKeydown);
       element.removeEventListener('paste', onPaste);
       element.removeEventListener('input', onInput);
+      element.removeEventListener('beforeinput', onBeforeInput);
       enforcer.destroy();
       element.contentEditable = 'false';
     },

@@ -1,6 +1,6 @@
 # minisiwyg-editor
 
-A sub-6kb gzipped, zero-dependency WYSIWYG editor with built-in XSS protection.
+An about-6kb gzipped, zero-dependency WYSIWYG editor with built-in XSS protection.
 
 Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k stars, abandoned with known XSS vulnerabilities). minisiwyg-editor treats security as architecture, not an afterthought. The sanitizer is built into the editor via a declarative policy engine, not bolted on as a dependency.
 
@@ -8,11 +8,11 @@ Spiritual successor to [Pell](https://github.com/jaredreich/pell) (~1.2kb, 12k s
 
 Try it in your browser: **[erikleon.github.io/minisiwyg-editor](https://erikleon.github.io/minisiwyg-editor/)**
 
-The demo runs the full editor + toolbar in <6kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
+The demo runs the full editor + toolbar in about 6kb gzipped. Paste an XSS payload (`<img src=x onerror=alert(1)>`) and watch the sanitizer strip it in real time.
 
 ## Features
 
-- **Tiny.** <6kb gzipped total. 6kb hard limit enforced in CI.
+- **Tiny.** About 6kb gzipped total. A 6.25kb hard limit is enforced in CI.
 - **Zero runtime dependencies.** Nothing to audit, nothing to break.
 - **XSS protection at every entry point.** Whitelist-based HTML sanitizer blocks `javascript:`, `data:`, event handlers, and encoded bypass attempts. Tested against OWASP XSS cheat sheet vectors.
 - **Declarative policy.** JSON-serializable rules define allowed tags, attributes, protocols, depth, and length. Store policies in a database, transmit them over the wire, validate them with a schema.
@@ -37,6 +37,8 @@ const editor = createEditor(document.querySelector('#editor')!, {
 const toolbar = createToolbar(editor);
 document.querySelector('#toolbar')!.appendChild(toolbar.element);
 ```
+
+The element does not have to be in the page yet: you can create the editor on an element you build and mount it later.
 
 Or use the sanitizer standalone, with no editor:
 
@@ -359,7 +361,7 @@ npm install              # install dev dependencies
 npm run build            # esbuild: ESM + CJS output + type declarations
 npm test                 # vitest with happy-dom
 npx playwright test      # OWASP XSS vectors in real browsers
-npm run size-check       # fails if total gzipped > 6kb
+npm run size-check       # fails if total gzipped > 6400 bytes
 npm run typecheck        # TypeScript type checking
 ```
 

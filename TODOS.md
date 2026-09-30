@@ -2,7 +2,7 @@
 
 ## The size budget shapes this list
 
-The full bundle is 6032 bytes gzipped against the 6144-byte limit that CI enforces. About 110 bytes of headroom. Nothing below fits in core without either raising the budget or moving something out.
+The limit that CI enforces is 6400 bytes gzipped. It was 6144 until v0.7.0, and was raised to fit formatting at a collapsed caret. Run `npm run build && npm run size-check` for the current size. Headroom is small, so most items below do not fit in core without raising the budget again or moving something out.
 
 So each item is tagged with where it has to live:
 
@@ -109,7 +109,7 @@ The natural showcase for the plugin API once hooks exist.
 
 ## Not planned
 
-**Collaborative editing.** CRDT or OT sync cannot be done inside a 6kb budget, and bolting on a sync engine contradicts the premise of the project. Consumers who need it should drive the editor from their own document model.
+**Collaborative editing.** CRDT or OT sync cannot be done inside a 6.25kb budget, and bolting on a sync engine contradicts the premise of the project. Consumers who need it should drive the editor from their own document model.
 
 ## Dependencies
 

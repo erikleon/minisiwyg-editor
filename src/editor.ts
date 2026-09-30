@@ -52,9 +52,6 @@ export function createEditor(
   if (!element) {
     throw new TypeError('createEditor requires an HTMLElement');
   }
-  if (!element.ownerDocument || !element.parentNode) {
-    throw new TypeError('createEditor requires an element attached to the DOM');
-  }
 
   const src = options?.policy ?? DEFAULT_POLICY;
   const policy: SanitizePolicy = {

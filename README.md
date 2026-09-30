@@ -38,6 +38,8 @@ const toolbar = createToolbar(editor);
 document.querySelector('#toolbar')!.appendChild(toolbar.element);
 ```
 
+The element does not have to be in the page yet: you can create the editor on an element you build and mount it later.
+
 Or use the sanitizer standalone, with no editor:
 
 ```typescript

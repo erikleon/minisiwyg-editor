@@ -260,11 +260,20 @@ describe('Editor Core', () => {
     }).toThrow('createEditor requires an HTMLElement');
   });
 
-  it('createEditor with detached element throws helpful error', () => {
+  it('createEditor accepts an element that is not in the page yet', () => {
     const detached = document.createElement('div');
-    expect(() => {
-      createEditor(detached);
-    }).toThrow('createEditor requires an element attached to the DOM');
+    const editor = createEditor(detached);
+    expect(detached.contentEditable).toBe('true');
+    container.appendChild(detached);
+    detached.innerHTML = '<p>hello</p>';
+    const range = document.createRange();
+    range.selectNodeContents(detached.querySelector('p')!);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    editor.exec('bold');
+    expect(editor.getHTML()).toBe('<p><strong>hello</strong></p>');
+    editor.destroy();
   });
 
   it('exec with unknown command throws helpful error', () => {

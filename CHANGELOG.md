@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- `createEditor` no longer throws for an element that has no parent node. The check's message said the element had to be "attached to the DOM", but the check only looked for a parent, and nothing in the editor needs one. An element can now be created detached and mounted later ([#33](https://github.com/erikleon/minisiwyg-editor/issues/33)).
+
 ## [v0.6.0] - 2026-08-12
 
 ### Changed

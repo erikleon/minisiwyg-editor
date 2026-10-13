@@ -13,6 +13,22 @@ permissions:
   contents: read
 
 jobs:
+  verify-release-ref:
+    # A hand-pushed version tag must point to code already reviewed on main.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require release commit on main
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: git merge-base --is-ancestor "$RELEASE_SHA" HEAD
+
   create-tag:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -50,7 +66,7 @@ jobs:
 
   publish:
     if: always() && !cancelled() && !failure()
-    needs: [create-tag]
+    needs: [create-tag, verify-release-ref]
     runs-on: ubuntu-latest
     environment: npm
     permissions:

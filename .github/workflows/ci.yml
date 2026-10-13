@@ -6,12 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24
           cache: npm
@@ -22,3 +27,37 @@ jobs:
       - run: npm run size-check
       - run: npx playwright install --with-deps
       - run: npm run test:browser
+
+  token-boundary:
+    name: Verify read-only CI boundary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Verify checkout did not retain credentials
+        run: |
+          if git config --local --get-regexp 'http\..*\.extraheader|credential\.'; then
+            echo "::error::Checkout retained a credential configuration"
+            exit 1
+          fi
+      - name: Verify workflow token cannot write repository refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          result=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f "ref=refs/heads/mimir-ci-token-probe-$GITHUB_RUN_ID" \
+            -f "sha=$GITHUB_SHA" 2>&1)
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "::error::Workflow token unexpectedly wrote a ref; remove the diagnostic branch and restrict permissions"
+            exit 1
+          fi
+          if ! printf '%s' "$result" | grep -q 'HTTP 403'; then
+            echo "::error::Write probe failed for an unexpected reason"
+            printf '%s\n' "$result"
+            exit 1
+          fi
+          echo "Read-only token verified: repository ref write denied with HTTP 403"

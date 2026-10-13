@@ -9,6 +9,9 @@ on:
     paths:
       - CHANGELOG.md
 
+permissions:
+  contents: read
+
 jobs:
   create-tag:
     if: github.ref == 'refs/heads/main'
@@ -19,7 +22,7 @@ jobs:
       version: ${{ steps.tag.outputs.version }}
       created: ${{ steps.tag.outputs.created }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Read version and create tag
         id: tag
         run: |
@@ -71,7 +74,7 @@ jobs:
           else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         if: steps.gate.outputs.should_publish == 'true'
         with:
           ref: ${{ steps.gate.outputs.version }}
@@ -90,7 +93,7 @@ jobs:
           fi
       # Node 24 bundles npm 11.12 or newer, which covers the 11.5.1 that OIDC
       # trusted publishing needs — so no global npm install is required here.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         if: steps.gate.outputs.should_publish == 'true'
         with:
           node-version: 24

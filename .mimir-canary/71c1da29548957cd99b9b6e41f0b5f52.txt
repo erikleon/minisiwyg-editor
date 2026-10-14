@@ -1,0 +1,1 @@
+Mimir credential write canary. No generated source code or secrets.
